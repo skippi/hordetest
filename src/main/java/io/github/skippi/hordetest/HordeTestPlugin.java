@@ -1,5 +1,7 @@
 package io.github.skippi.hordetest;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
@@ -10,14 +12,22 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class HordeTestPlugin extends JavaPlugin implements Listener {
-    private Map<Block, Float> blockHealths = new HashMap<>();
+    private static ProtocolManager PM;
+    private static final BlockHealthManager BLOCK_HEALTH_MANAGER = new BlockHealthManager();
+
+    public static ProtocolManager getProtocolManager() {
+        return PM;
+    }
+
+    public static BlockHealthManager getBlockHealthManager() {
+        return BLOCK_HEALTH_MANAGER;
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
+        PM = ProtocolLibrary.getProtocolManager();
     }
 
     @EventHandler
@@ -31,18 +41,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private void skeletonBlockBreak(ProjectileHitEvent event) {
         final Block block = event.getHitBlock();
         if (block == null) return;
-        damageBlock(block, 1);
+        getBlockHealthManager().damage(block, 0.25);
         event.getEntity().remove();
-    }
-
-    private void damageBlock(Block block, float damage) {
-        float health = blockHealths.computeIfAbsent(block, b -> b.getType().getHardness());
-        float newHealth = health - damage;
-        if (newHealth <= 0) {
-            blockHealths.remove(block);
-            block.breakNaturally();
-        } else {
-            blockHealths.put(block, Math.max(0, newHealth));
-        }
     }
 }
