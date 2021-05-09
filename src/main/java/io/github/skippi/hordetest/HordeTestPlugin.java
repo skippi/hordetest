@@ -3,25 +3,22 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Skeleton;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
-import java.util.Optional;
+import java.util.*;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -87,19 +84,71 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void skeletonAcquire(EntitySpawnEvent event) {
+    private void monsterAcquire(CreatureSpawnEvent event) {
         @NotNull Entity entity = event.getEntity();
-        if (!(entity instanceof Skeleton)) return;
-        Skeleton skeleton = (Skeleton) entity;
+        if (!(entity instanceof Monster)) return;
+        Monster monster = (Monster) entity;
         new BukkitRunnable() {
             @Override
             public void run() {
-                getNearestPlayer(skeleton.getWorld(), skeleton.getLocation()).ifPresent(skeleton::setTarget);
+                getNearestPlayer(monster.getWorld(), monster.getLocation()).ifPresent(monster::setTarget);
             }
         }.runTaskTimer(this, 0, 2);
     }
 
     private static Optional<Player> getNearestPlayer(World world, Location origin) {
         return world.getPlayers().stream().min(Comparator.comparing(p -> p.getLocation().distance(origin)));
+    }
+
+    @EventHandler
+    private void zombieDig(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Zombie)) return;
+        Zombie zombie = (Zombie) entity;
+        new BukkitRunnable() {
+            int cooldown = 0;
+
+            @Override
+            public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (cooldown-- > 0) {
+                    return;
+                }
+                @Nullable LivingEntity target = zombie.getTarget();
+                if (target == null) return;
+                if (zombie.hasLineOfSight(target)) return;
+                @NotNull Vector dir = target.getLocation().toVector().subtract(zombie.getLocation().toVector()).normalize();
+                int x = zombie.getLocation().getBlockX();
+                int z = zombie.getLocation().getBlockZ();
+                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
+                    x += (dir.getX() < 0) ? -1 : 1;
+                } else {
+                    z += (dir.getZ() < 0) ? -1 : 1;
+                }
+                Block footBlock = zombie.getWorld().getBlockAt(x, zombie.getLocation().getBlockY(), z);
+                @NotNull Block faceBlock = footBlock.getRelative(BlockFace.UP);
+                List<Block> blocks = new ArrayList<>();
+                blocks.add(faceBlock);
+                if (dir.getY() > 0) {
+                    blocks.add(zombie.getWorld().getBlockAt(zombie.getEyeLocation()).getRelative(BlockFace.UP));
+                    blocks.add(faceBlock.getRelative(BlockFace.UP));
+                } else if (dir.getY() < 0) {
+                    blocks.add(footBlock);
+                    blocks.add(footBlock.getRelative(BlockFace.DOWN));
+                } else {
+                    blocks.add(footBlock);
+                }
+                Optional<Block> maybeBlock = blocks.stream().filter(b -> !b.getType().isAir()).findFirst();
+                if (maybeBlock.isPresent()) {
+                    zombie.swingMainHand();
+                    zombie.getWorld().playSound(maybeBlock.get().getLocation(), maybeBlock.get().getSoundGroup().getHitSound(), 0.5f, 0);
+                    getBlockHealthManager().damage(maybeBlock.get(), 1);
+                    cooldown = 40;
+                }
+            }
+        }.runTaskTimer(this, 0, 1);
     }
 }
