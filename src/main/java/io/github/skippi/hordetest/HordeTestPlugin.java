@@ -10,6 +10,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -176,5 +177,12 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 timer = 0;
             }
         }.runTaskTimer(this, 0, 1);
+    }
+
+    @EventHandler
+    private void creeperNoFriendlyFire(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Creeper)) return;
+        if (!(event.getEntity() instanceof Monster)) return;
+        event.setCancelled(true);
     }
 }
