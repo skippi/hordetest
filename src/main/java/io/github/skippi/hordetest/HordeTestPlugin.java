@@ -151,4 +151,30 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0, 1);
     }
+
+    @EventHandler
+    private void creeperPatience(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Creeper)) return;
+        Creeper creeper = (Creeper) entity;
+        new BukkitRunnable() {
+            int timer = 0;
+            Location lastPos = creeper.getLocation();
+            @Override
+            public void run() {
+                if (!creeper.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (timer++ < 80) return;
+                double dist = creeper.getLocation().distance(lastPos);
+                System.out.println(dist);
+                if (dist < 3) {
+                    creeper.ignite();
+                }
+                lastPos = creeper.getLocation();
+                timer = 0;
+            }
+        }.runTaskTimer(this, 0, 1);
+    }
 }
