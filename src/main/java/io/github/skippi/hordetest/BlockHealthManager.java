@@ -34,6 +34,7 @@ public class BlockHealthManager {
         if (value > 0f) {
             blockHealths.put(block, value);
         } else {
+            block.getWorld().playSound(block.getLocation(), block.getSoundGroup().getBreakSound(), 1, 0);
             block.setType(Material.AIR);
             blockHealths.remove(block);
         }
