@@ -20,6 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -184,5 +186,62 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (!(event.getDamager() instanceof Creeper)) return;
         if (!(event.getEntity() instanceof Monster)) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void spiderBreakBlock(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Spider)) return;
+        Spider spider = (Spider) entity;
+        new BukkitRunnable() {
+            int cooldown = 0;
+
+            @Override
+            public void run() {
+                if (!spider.isValid()) return;
+                if (cooldown-- > 0) return;
+                @Nullable LivingEntity target = spider.getTarget();
+                if (target == null || spider.hasLineOfSight(target)) return;
+                @NotNull Vector dir = target.getLocation().toVector().subtract(spider.getLocation().toVector()).normalize();
+                int x = spider.getLocation().getBlockX();
+                int z = spider.getLocation().getBlockZ();
+                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
+                    x += (dir.getX() < 0) ? -1 : 1;
+                } else {
+                    z += (dir.getZ() < 0) ? -1 : 1;
+                }
+                Block footBlock = spider.getWorld().getBlockAt(x, spider.getLocation().getBlockY(), z);
+                @NotNull Block faceBlock = footBlock.getRelative(BlockFace.UP);
+                List<Block> blocks = new ArrayList<>();
+                if (dir.getY() > 0) {
+                    blocks.add(spider.getWorld().getBlockAt(spider.getEyeLocation()).getRelative(BlockFace.UP));
+                    blocks.add(faceBlock.getRelative(BlockFace.UP));
+                } else if (dir.getY() < 0) {
+                    blocks.add(footBlock);
+                    blocks.add(footBlock.getRelative(BlockFace.DOWN));
+                } else {
+                    blocks.add(footBlock);
+                }
+                blocks.add(faceBlock);
+                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
+                    List<Block> leftBlocks = blocks.stream().map(b -> b.getRelative(0, 0, -1)).collect(Collectors.toList());
+                    List<Block> rightBlocks = blocks.stream().map(b -> b.getRelative(0, 0, 1)).collect(Collectors.toList());
+                    blocks.addAll(leftBlocks);
+                    blocks.addAll(rightBlocks);
+                } else {
+                    List<Block> leftBlocks = blocks.stream().map(b -> b.getRelative(-1, 0, 0)).collect(Collectors.toList());
+                    List<Block> rightBlocks = blocks.stream().map(b -> b.getRelative(1, 0, 0)).collect(Collectors.toList());
+                    blocks.addAll(leftBlocks);
+                    blocks.addAll(rightBlocks);
+                }
+                Optional<Block> maybeBlock = blocks.stream().filter(b -> !b.getType().isAir()).findFirst();
+                if (maybeBlock.isPresent()) {
+                    spider.swingMainHand();
+                    spider.getWorld().playSound(maybeBlock.get().getLocation(), maybeBlock.get().getSoundGroup().getHitSound(), 0.5f, 0);
+                    getBlockHealthManager().damage(maybeBlock.get(), 1);
+                    cooldown = 40;
+                }
+            }
+        }.runTaskTimer(this, 0 ,1);
     }
 }
