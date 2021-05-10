@@ -10,6 +10,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +40,9 @@ public class BlockHealthManager {
     }
 
     private double getMaxHealth(Block block) {
+        if (Arrays.asList(Material.SANDSTONE, Material.STONE).contains(block.getType())) {
+            return 0.5;
+        }
         return Math.min(15, block.getType().getBlastResistance());
     }
 
