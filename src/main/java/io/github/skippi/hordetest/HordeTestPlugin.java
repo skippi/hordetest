@@ -9,10 +9,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntitySpawnEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -21,7 +18,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -243,5 +239,40 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }.runTaskTimer(this, 0 ,1);
+    }
+
+    @EventHandler
+    private void zombieClimb(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Zombie)) return;
+        Zombie zombie = (Zombie) entity;
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
+                @Nullable LivingEntity target = zombie.getTarget();
+                if (target == null) return;
+                if (target.getLocation().getY() < zombie.getLocation().getY()) return;
+                if (zombie.getWorld().getEntities()
+                        .stream()
+                        .anyMatch(e -> e.isValid() && e != zombie && e instanceof Zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0, 0.15, 0).overlaps(e.getBoundingBox().clone().expand(0, 0.15, 0)))) {
+                    final double dist = 0.15;
+                    if (zombie.getEyeLocation().clone().add(0,  0.5, 0).getBlock().getType().isSolid()) return;
+                    zombie.teleport(zombie.getLocation().clone().add(0, dist, 0));
+                    zombie.setVelocity(target.getLocation().clone().subtract(zombie.getLocation()).toVector().normalize().setY(0).multiply(0.2));
+                    zombie.swingMainHand();
+                }
+            }
+        }.runTaskTimer(this, 0, 1);
+    }
+
+    @EventHandler
+    private void zombieFallDamage(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.FALL) return;
+        if (!(event.getEntity() instanceof Zombie)) return;
+        event.setCancelled(true);
     }
 }
