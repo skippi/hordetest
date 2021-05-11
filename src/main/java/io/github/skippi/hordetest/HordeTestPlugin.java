@@ -3,22 +3,22 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Comparator;
+import java.util.Optional;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -91,13 +91,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                getNearestPlayer(monster.getWorld(), monster.getLocation()).ifPresent(monster::setTarget);
+                monster.getWorld().getPlayers()
+                    .stream()
+                    .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE))
+                    .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
+                    .ifPresent(monster::setTarget);
             }
         }.runTaskTimer(this, 0, 2);
-    }
-
-    private static Optional<Player> getNearestPlayer(World world, Location origin) {
-        return world.getPlayers().stream().filter(p -> p.getGameMode() != GameMode.CREATIVE).min(Comparator.comparing(p -> p.getLocation().distance(origin)));
     }
 
     @EventHandler
@@ -114,38 +114,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (cooldown-- > 0) {
-                    return;
-                }
+                if (cooldown-- > 0) return;
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (zombie.hasLineOfSight(target)) return;
-                @NotNull Vector dir = target.getLocation().toVector().subtract(zombie.getLocation().toVector()).normalize();
-                int x = zombie.getLocation().getBlockX();
-                int z = zombie.getLocation().getBlockZ();
-                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
-                    x += (dir.getX() < 0) ? -1 : 1;
-                } else {
-                    z += (dir.getZ() < 0) ? -1 : 1;
-                }
-                Block footBlock = zombie.getWorld().getBlockAt(x, zombie.getLocation().getBlockY(), z);
-                @NotNull Block faceBlock = footBlock.getRelative(BlockFace.UP);
-                List<Block> blocks = new ArrayList<>();
-                blocks.add(faceBlock);
-                if (dir.getY() > 0) {
-                    blocks.add(zombie.getWorld().getBlockAt(zombie.getEyeLocation()).getRelative(BlockFace.UP));
-                    blocks.add(faceBlock.getRelative(BlockFace.UP));
-                } else if (dir.getY() < 0) {
-                    blocks.add(footBlock);
-                    blocks.add(footBlock.getRelative(BlockFace.DOWN));
-                } else {
-                    blocks.add(footBlock);
-                }
-                Optional<Block> maybeBlock = blocks.stream().filter(b -> !b.getType().isAir()).findFirst();
+                Optional<Block> maybeBlock = AI.findDigTargetBlocks(zombie, target.getLocation().toVector())
+                        .findFirst();
                 if (maybeBlock.isPresent()) {
-                    zombie.swingMainHand();
-                    zombie.getWorld().playSound(maybeBlock.get().getLocation(), maybeBlock.get().getSoundGroup().getHitSound(), 0.5f, 0);
-                    getBlockHealthManager().damage(maybeBlock.get(), 1);
+                    AI.attack(zombie, maybeBlock.get(), 1);
                     cooldown = 40;
                 }
             }
@@ -198,43 +174,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (cooldown-- > 0) return;
                 @Nullable LivingEntity target = spider.getTarget();
                 if (target == null || spider.hasLineOfSight(target)) return;
-                @NotNull Vector dir = target.getLocation().toVector().subtract(spider.getLocation().toVector()).normalize();
-                int x = spider.getLocation().getBlockX();
-                int z = spider.getLocation().getBlockZ();
-                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
-                    x += (dir.getX() < 0) ? -1 : 1;
-                } else {
-                    z += (dir.getZ() < 0) ? -1 : 1;
-                }
-                Block footBlock = spider.getWorld().getBlockAt(x, spider.getLocation().getBlockY(), z);
-                @NotNull Block faceBlock = footBlock.getRelative(BlockFace.UP);
-                List<Block> blocks = new ArrayList<>();
-                if (dir.getY() > 0) {
-                    blocks.add(spider.getWorld().getBlockAt(spider.getEyeLocation()).getRelative(BlockFace.UP));
-                    blocks.add(faceBlock.getRelative(BlockFace.UP));
-                } else if (dir.getY() < 0) {
-                    blocks.add(footBlock);
-                    blocks.add(footBlock.getRelative(BlockFace.DOWN));
-                } else {
-                    blocks.add(footBlock);
-                }
-                blocks.add(faceBlock);
-                if (Math.abs(dir.getX()) > Math.abs(dir.getZ())) {
-                    List<Block> leftBlocks = blocks.stream().map(b -> b.getRelative(0, 0, -1)).collect(Collectors.toList());
-                    List<Block> rightBlocks = blocks.stream().map(b -> b.getRelative(0, 0, 1)).collect(Collectors.toList());
-                    blocks.addAll(leftBlocks);
-                    blocks.addAll(rightBlocks);
-                } else {
-                    List<Block> leftBlocks = blocks.stream().map(b -> b.getRelative(-1, 0, 0)).collect(Collectors.toList());
-                    List<Block> rightBlocks = blocks.stream().map(b -> b.getRelative(1, 0, 0)).collect(Collectors.toList());
-                    blocks.addAll(leftBlocks);
-                    blocks.addAll(rightBlocks);
-                }
-                Optional<Block> maybeBlock = blocks.stream().filter(b -> !b.getType().isAir()).findFirst();
+                Optional<Block> maybeBlock = AI.findDigTargetBlocks(spider, target.getLocation().toVector())
+                        .findFirst();
                 if (maybeBlock.isPresent()) {
-                    spider.swingMainHand();
-                    spider.getWorld().playSound(maybeBlock.get().getLocation(), maybeBlock.get().getSoundGroup().getHitSound(), 0.5f, 0);
-                    getBlockHealthManager().damage(maybeBlock.get(), 1);
+                    AI.attack(spider, maybeBlock.get(), 1);
                     cooldown = 40;
                 }
             }
@@ -259,11 +202,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (zombie.getWorld().getEntities()
                         .stream()
                         .anyMatch(e -> e.isValid() && e != zombie && e instanceof Zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0, 0.15, 0).overlaps(e.getBoundingBox().clone().expand(0, 0.15, 0)))) {
-                    final double dist = 0.15;
-                    if (zombie.getEyeLocation().clone().add(0,  0.5, 0).getBlock().getType().isSolid()) return;
-                    zombie.teleport(zombie.getLocation().clone().add(0, dist, 0));
-                    zombie.setVelocity(target.getLocation().clone().subtract(zombie.getLocation()).toVector().normalize().setY(0).multiply(zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue()));
-                    zombie.swingMainHand();
+                    AI.climb(zombie, target.getLocation().toVector());
                 }
             }
         }.runTaskTimer(this, 0, 1);
