@@ -96,7 +96,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     private static Optional<Player> getNearestPlayer(World world, Location origin) {
-        return world.getPlayers().stream().min(Comparator.comparing(p -> p.getLocation().distance(origin)));
+        return world.getPlayers().stream().filter(p -> p.getGameMode() != GameMode.CREATIVE).min(Comparator.comparing(p -> p.getLocation().distance(origin)));
     }
 
     @EventHandler
