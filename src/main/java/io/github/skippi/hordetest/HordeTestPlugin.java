@@ -4,6 +4,7 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
@@ -167,7 +168,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
                 if (timer++ < 80) return;
                 double dist = creeper.getLocation().distance(lastPos);
-                System.out.println(dist);
                 if (dist < 3) {
                     creeper.ignite();
                 }
@@ -262,7 +262,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     final double dist = 0.15;
                     if (zombie.getEyeLocation().clone().add(0,  0.5, 0).getBlock().getType().isSolid()) return;
                     zombie.teleport(zombie.getLocation().clone().add(0, dist, 0));
-                    zombie.setVelocity(target.getLocation().clone().subtract(zombie.getLocation()).toVector().normalize().setY(0).multiply(0.2));
+                    zombie.setVelocity(target.getLocation().clone().subtract(zombie.getLocation()).toVector().normalize().setY(0).multiply(zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue()));
                     zombie.swingMainHand();
                 }
             }
@@ -274,5 +274,12 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (event.getCause() != EntityDamageEvent.DamageCause.FALL) return;
         if (!(event.getEntity() instanceof Zombie)) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void zombieSpeed(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Zombie)) return;
+        entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.55);
     }
 }
