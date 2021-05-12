@@ -221,4 +221,12 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (!(entity instanceof Zombie)) return;
         entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.55);
     }
+
+    @EventHandler
+    private void zombieAdults(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof Zombie)) return;
+        Zombie zombie = (Zombie) entity;
+        zombie.setAdult();
+    }
 }
