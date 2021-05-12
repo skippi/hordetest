@@ -3,22 +3,26 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.BlockIterator;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
-import java.util.Optional;
+import java.util.*;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -35,6 +39,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
         PM = ProtocolLibrary.getProtocolManager();
     }
 
@@ -228,5 +233,33 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (!(entity instanceof Zombie)) return;
         Zombie zombie = (Zombie) entity;
         zombie.setAdult();
+    }
+
+    final Set<UUID> hordeIds = new HashSet<>();
+
+    private void trySpawnZombie() {
+        if (hordeIds.size() >= Bukkit.getOnlinePlayers().size() * 64) return;
+        for (World world : Bukkit.getWorlds()) {
+            if (!(13700 <= world.getTime() && world.getTime() < 24000)) return;
+            Player player = world.getPlayers().get(RandomUtils.nextInt(world.getPlayerCount()));
+            @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
+            BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
+            int count = 0;
+            while (iter.hasNext()) {
+                @NotNull Block surfaceBlock = world.getHighestBlockAt(iter.next().getLocation()).getRelative(BlockFace.UP);
+                if (count++ < 10) continue;
+                if (surfaceBlock.getLightFromBlocks() == 0) {
+                    @NotNull Zombie zombie = world.spawn(surfaceBlock.getLocation(), Zombie.class);
+                    hordeIds.add(zombie.getUniqueId());
+                    return;
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    private void hordeRemove(EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof Zombie)) return;
+        hordeIds.remove(event.getEntity().getUniqueId());
     }
 }
