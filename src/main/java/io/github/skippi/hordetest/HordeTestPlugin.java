@@ -206,11 +206,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
                 if (zombie.getWorld().getEntities()
                         .stream()
-                        .anyMatch(e -> e.isValid() && e != zombie && e instanceof Zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0, 0.15, 0).overlaps(e.getBoundingBox().clone().expand(0, 0.15, 0)))) {
+                        .anyMatch(e -> e.isValid() && e != zombie && e instanceof Zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
                     AI.climb(zombie, target.getLocation().toVector());
                 }
             }
-        }.runTaskTimer(this, 0, 1);
+        }.runTaskTimer(this, 0, 4);
     }
 
     @EventHandler
