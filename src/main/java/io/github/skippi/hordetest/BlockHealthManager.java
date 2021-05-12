@@ -41,7 +41,7 @@ public class BlockHealthManager {
     }
 
     private double getMaxHealth(Block block) {
-        if (Arrays.asList(Material.SANDSTONE, Material.STONE).contains(block.getType())) {
+        if (Arrays.asList(Material.SANDSTONE, Material.STONE, Material.DIORITE, Material.GRANITE).contains(block.getType())) {
             return 0.5;
         }
         return Math.min(15, block.getType().getBlastResistance());
