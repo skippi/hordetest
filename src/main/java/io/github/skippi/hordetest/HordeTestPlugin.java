@@ -15,6 +15,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -58,6 +59,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return item;
     }
 
+    private boolean isArrowTurret(Entity entity) {
+        System.out.println(entity.getCustomName());
+        return entity instanceof ArmorStand && entity.getCustomName().startsWith("Arrow Turret");
+    }
+
     private boolean isArrowTurret(ItemStack item) {
         return item.getType() == Material.BOOK && item.getItemMeta().getCustomModelData() == 1;
     }
@@ -68,6 +74,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (event.getItem() == null || !isArrowTurret(event.getItem())) return;
         assert event.getClickedBlock() != null;
         spawnArrowTurret(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5));
+    }
+
+    @EventHandler
+    private void tryPickupArrowTurret(PlayerInteractAtEntityEvent event) {
+        if (!isArrowTurret(event.getRightClicked())) return;
+        event.getRightClicked().remove();
+        event.getPlayer().getInventory().addItem(makeArrowTurret());
+        event.setCancelled(true);
     }
 
     private void spawnArrowTurret(Location loc) {
