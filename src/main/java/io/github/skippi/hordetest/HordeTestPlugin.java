@@ -3,6 +3,7 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import com.google.common.primitives.Ints;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
@@ -315,7 +316,19 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private void zombieSpeed(CreatureSpawnEvent event) {
         @NotNull LivingEntity entity = event.getEntity();
         if (!(entity instanceof Zombie)) return;
-        entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.55);
+        new BukkitRunnable() {
+            int exposureTime = 0;
+
+            @Override
+            public void run() {
+                exposureTime = Ints.constrainToRange(exposureTime + ((entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 0) ? 1 : -1), -80, 20);
+                if (exposureTime <= 0) {
+                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75);
+                } else {
+                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75 - 0.0175 * exposureTime);
+                }
+            }
+        }.runTaskTimer(this, 0, 1);
     }
 
     @EventHandler
