@@ -3,18 +3,21 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
@@ -23,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -40,7 +44,62 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         PM = ProtocolLibrary.getProtocolManager();
+    }
+
+    private ItemStack makeArrowTurret() {
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+        meta.setCustomModelData(1);
+        meta.displayName(Component.text("Arrow Turret"));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private boolean isArrowTurret(ItemStack item) {
+        return item.getType() == Material.BOOK && item.getItemMeta().getCustomModelData() == 1;
+    }
+
+    @EventHandler
+    private void trySpawnArrowTurret(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getItem() == null || !isArrowTurret(event.getItem())) return;
+        assert event.getClickedBlock() != null;
+        spawnArrowTurret(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5));
+    }
+
+    private void spawnArrowTurret(Location loc) {
+        @NotNull ArmorStand turret = loc.getWorld().spawn(loc, ArmorStand.class);
+        turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.BOW));
+        turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
+        turret.setCustomName("Arrow Turret");
+        turret.setCustomNameVisible(true);
+        turret.setHealth(5);
+        new BukkitRunnable() {
+            Monster target = null;
+            int cooldown = 0;
+
+            private boolean isTargettable(Entity e) {
+                return e.isValid() && e instanceof Monster && e.getLocation().distance(turret.getLocation()) < 75 && turret.hasLineOfSight(e);
+            }
+
+            @Override
+            public void run() {
+                if (!turret.isValid()) return;
+                if (target != null && isTargettable(target) && cooldown-- <= 0) {
+                    @NotNull Vector dir = target.getEyeLocation().clone().subtract(turret.getEyeLocation()).toVector().normalize();
+                    @NotNull Arrow arrow = turret.launchProjectile(Arrow.class);
+                    arrow.setVelocity(dir.clone().multiply(3));
+                    cooldown = 20;
+                } else {
+                    target = (Monster) turret.getWorld().getEntities().stream()
+                            .filter(this::isTargettable)
+                            .min(Comparator.comparing(e -> turret.getLocation().distance(e.getLocation())))
+                            .orElse(null);
+                }
+            }
+        }.runTaskTimer(this, 0, 1);
     }
 
     @EventHandler
@@ -51,7 +110,22 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void turretNoFriendlyFire(ProjectileCollideEvent event) {
+        if (!(event.getEntity().getShooter() instanceof ArmorStand)) return;
+        if (!(event.getCollidedWith() instanceof ArmorStand || event.getCollidedWith() instanceof Player)) return;
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void turretProjectileCleanup(ProjectileHitEvent event) {
+        if (!(event.getEntity().getShooter() instanceof ArmorStand)) return;
+        if (event.getHitBlock() == null) return;
+        event.getEntity().remove();
+    }
+
+    @EventHandler
     private void skeletonBlockBreak(ProjectileHitEvent event) {
+        if (!(event.getEntity().getShooter() instanceof Skeleton)) return;
         final Block block = event.getHitBlock();
         if (block == null) return;
         getBlockHealthManager().damage(block, 0.25);
@@ -96,9 +170,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                monster.getWorld().getPlayers()
-                    .stream()
-                    .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE))
+                Stream<Player> players = monster.getWorld().getPlayers()
+                        .stream()
+                        .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
+                Stream<LivingEntity> targetables = monster.getWorld().getEntities().stream()
+                        .filter(e -> e.isValid() && e instanceof ArmorStand)
+                        .map(e -> (LivingEntity) e);
+                Stream.concat(players.map(p -> (LivingEntity) p), targetables)
                     .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
                     .ifPresent(monster::setTarget);
             }
