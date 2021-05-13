@@ -74,6 +74,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (event.getItem() == null || !isArrowTurret(event.getItem())) return;
         assert event.getClickedBlock() != null;
         spawnArrowTurret(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5));
+        event.getItem().setAmount(event.getItem().getAmount() - 1);
     }
 
     @EventHandler
