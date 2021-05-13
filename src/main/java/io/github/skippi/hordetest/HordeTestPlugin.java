@@ -110,6 +110,16 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void noDamageCooldown(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity)) return;
+        if (event.getEntity() instanceof ArmorStand) return;
+        LivingEntity entity = (LivingEntity) event.getEntity();
+        entity.damage(event.getFinalDamage());
+        entity.setNoDamageTicks(0);
+        event.setCancelled(true);
+    }
+
+    @EventHandler
     private void turretNoFriendlyFire(ProjectileCollideEvent event) {
         if (!(event.getEntity().getShooter() instanceof ArmorStand)) return;
         if (!(event.getCollidedWith() instanceof ArmorStand || event.getCollidedWith() instanceof Player)) return;
