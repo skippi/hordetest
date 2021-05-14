@@ -395,6 +395,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
+                if (getExposureTime(zombie) > 0) return;
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
@@ -414,20 +415,37 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
+    private static Map<UUID, Integer> zombieExposure = new HashMap<>();
+
+    private static int getExposureTime(LivingEntity entity) {
+        return zombieExposure.getOrDefault(entity.getUniqueId(), 0);
+    }
+
+    private static void setExposureTime(LivingEntity entity, int value) {
+        zombieExposure.put(entity.getUniqueId(), value);
+    }
+
     @EventHandler
     private void zombieSpeed(CreatureSpawnEvent event) {
         @NotNull LivingEntity entity = event.getEntity();
         if (!(entity instanceof Zombie)) return;
         new BukkitRunnable() {
-            int exposureTime = 0;
-
             @Override
             public void run() {
-                exposureTime = Ints.constrainToRange(exposureTime + ((entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 0) ? 1 : -1), -80, 20);
-                if (exposureTime <= 0) {
+                BlockIterator iter = new BlockIterator(entity.getWorld(), entity.getLocation().getBlock().getLocation().toVector(), new Vector(0, -1, 0), 0, 3);
+                boolean isInLight = entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 0;
+                while (iter.hasNext()) {
+                    @NotNull Block block = iter.next();
+                    if (block.isSolid()) {
+                        break;
+                    }
+                    isInLight = block.getLightFromBlocks() > 0;
+                }
+                setExposureTime(entity, Ints.constrainToRange(getExposureTime(entity) + (isInLight ? 1 : -1), -80, 20));
+                if (getExposureTime(entity) <= 0) {
                     entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75);
                 } else {
-                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75 - 0.0175 * exposureTime);
+                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75 - 0.0175 * getExposureTime(entity));
                 }
                 if (entity.isInWater() && ((Zombie) entity).getTarget() != null && ((Zombie) entity).getTarget().getLocation().distance(entity.getLocation()) > 1.5) {
                     @NotNull Vector dir = ((Zombie) entity).getTarget().getLocation().clone().subtract(entity.getLocation()).toVector().normalize();
@@ -471,5 +489,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @EventHandler
     private void hordeRemove(EntityRemoveFromWorldEvent event) {
         hordeIds.remove(event.getEntity().getUniqueId());
+        zombieExposure.remove(event.getEntity().getUniqueId());
     }
 }
