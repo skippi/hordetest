@@ -349,7 +349,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void golemTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getEntity() instanceof IronGolem && event.getTarget() instanceof Monster) {
+        if (event.getEntity() instanceof IronGolem) {
             event.setCancelled(true);
         }
     }
