@@ -342,6 +342,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 } else {
                     entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75 - 0.0175 * exposureTime);
                 }
+                if (entity.isInWater() && ((Zombie) entity).getTarget() != null && ((Zombie) entity).getTarget().getLocation().distance(entity.getLocation()) > 1.5) {
+                    @NotNull Vector dir = ((Zombie) entity).getTarget().getLocation().clone().subtract(entity.getLocation()).toVector().normalize();
+                    @NotNull Vector horz = dir.clone().setY(0).multiply(entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 0.7);
+                    entity.setVelocity(horz.clone().setY(dir.getY() * 0.3));
+                }
             }
         }.runTaskTimer(this, 0, 1);
     }
