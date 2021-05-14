@@ -207,9 +207,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 Stream<LivingEntity> targetables = monster.getWorld().getEntities().stream()
                         .filter(e -> e.isValid() && e instanceof ArmorStand)
                         .map(e -> (LivingEntity) e);
-                Stream.concat(players.map(p -> (LivingEntity) p), targetables)
-                    .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
-                    .ifPresent(monster::setTarget);
+                LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
+                        .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
+                        .orElse(null);
+                monster.setTarget(target);
             }
         }.runTaskTimer(this, 0, 2);
     }
