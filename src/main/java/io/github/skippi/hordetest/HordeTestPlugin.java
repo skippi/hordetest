@@ -2,6 +2,7 @@ package io.github.skippi.hordetest;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import com.google.common.primitives.Ints;
 import net.kyori.adventure.text.Component;
@@ -33,6 +34,7 @@ import java.util.stream.Stream;
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
     private static final BlockHealthManager BLOCK_HEALTH_MANAGER = new BlockHealthManager();
+    private static HordeTestPlugin INSTANCE;
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -47,6 +49,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
+        INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
     }
 
@@ -269,6 +272,87 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void ironGolemAI(CreatureSpawnEvent event) {
+        @NotNull LivingEntity entity = event.getEntity();
+        if (!(entity instanceof IronGolem)) return;
+        IronGolem golem = (IronGolem) entity;
+        new BukkitRunnable() {
+            int cooldown = 0;
+            Optional<Class<? extends Entity>> pocket = Optional.empty();
+
+            @Override
+            public void run() {
+                if (!golem.isValid()) {
+                    cancel();
+                    return;
+                }
+                cooldown--;
+                if (!pocket.isPresent()) {
+                    golem.setAI(true);
+                    Optional<LivingEntity> target = golem.getWorld().getEntities().stream()
+                            .filter(e -> e != golem && e.isValid() && e instanceof Monster)
+                            .map(e -> (LivingEntity) e)
+                            .min(Comparator.comparing(e -> e.getLocation().distance(golem.getLocation())));
+                    golem.setTarget(target.orElse(null));
+                    if (cooldown <= 55 && golem.getTarget() != null && golem.getTarget().getLocation().distance(golem.getLocation()) < 3) {
+                        pocket = Optional.of(golem.getTarget().getClass());
+                        golem.getTarget().remove();
+                        golem.setTarget(null);
+                    }
+                } else {
+                    if (golem.getTarget() == null) {
+                        Stream<Player> players = golem.getWorld().getPlayers()
+                                .stream()
+                                .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
+                        Stream<LivingEntity> targetables = golem.getWorld().getEntities().stream()
+                                .filter(e -> e.isValid() && e instanceof ArmorStand)
+                                .map(e -> (LivingEntity) e);
+                        LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
+                                .min(Comparator.comparing(p -> p.getLocation().distance(golem.getLocation())))
+                                .orElse(null);
+                        golem.setTarget(target);
+                    }
+                    if (golem.getTarget() != null) {
+                        double dist = golem.getTarget().getLocation().distance(golem.getLocation());
+                        golem.setAI(dist > 100);
+                        if (cooldown <= 0 && dist <= 100) {
+                            Entity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
+
+                            double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
+                            new BukkitRunnable() {
+                                double vy = 0.08 * time;
+                                double vh = 0.6;
+                                Vector horzDir = golem.getTarget().getLocation().subtract(yeeted.getLocation()).toVector().setY(0).normalize();
+
+                                @Override
+                                public void run() {
+                                    @NotNull Location newPos = yeeted.getLocation().clone().add(horzDir.clone().multiply(vh)).add(0, vy, 0);
+                                    if (newPos.getBlock().isSolid() || newPos.getY() < 0) {
+                                        cancel();
+                                        return;
+                                    }
+                                    yeeted.teleport(newPos);
+                                    vy -= 0.08;
+                                }
+                            }.runTaskTimer(INSTANCE, 0, 1);
+                            pocket = Optional.empty();
+                            golem.setTarget(null);
+                            cooldown = 60;
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 0, 1);
+    }
+
+    @EventHandler
+    private void golemTarget(EntityTargetLivingEntityEvent event) {
+        if (event.getEntity() instanceof IronGolem && event.getTarget() instanceof Monster) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     private void creeperNoFriendlyFire(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Creeper)) return;
         if (!(event.getEntity() instanceof Monster)) return;
@@ -385,8 +469,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void hordeRemove(EntityDeathEvent event) {
-        if (!(event.getEntity() instanceof Zombie)) return;
+    private void hordeRemove(EntityRemoveFromWorldEvent event) {
         hordeIds.remove(event.getEntity().getUniqueId());
     }
 }
