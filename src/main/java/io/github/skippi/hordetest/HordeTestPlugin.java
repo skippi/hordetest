@@ -278,7 +278,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         IronGolem golem = (IronGolem) entity;
         new BukkitRunnable() {
             int cooldown = 0;
-            Optional<Class<? extends Entity>> pocket = Optional.empty();
+            Optional<Class<? extends LivingEntity>> pocket = Optional.empty();
 
             @Override
             public void run() {
@@ -316,7 +316,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         double dist = golem.getTarget().getLocation().distance(golem.getLocation());
                         golem.setAI(dist > 100);
                         if (cooldown <= 0 && dist <= 100) {
-                            Entity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
+                            LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
+                            yeeted.setCollidable(false);
 
                             double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
                             new BukkitRunnable() {
@@ -328,6 +329,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                                 public void run() {
                                     @NotNull Location newPos = yeeted.getLocation().clone().add(horzDir.clone().multiply(vh)).add(0, vy, 0);
                                     if (newPos.getBlock().isSolid() || newPos.getY() < 0) {
+                                        yeeted.setCollidable(true);
                                         cancel();
                                         return;
                                     }
