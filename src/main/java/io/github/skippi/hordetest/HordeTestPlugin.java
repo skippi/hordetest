@@ -116,7 +116,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (!isTargettable(target)) {
                     target = (LivingEntity) turret.getWorld().getEntities().stream()
                             .filter(this::isTargettable)
-                            .min(Comparator.comparing(e -> turret.getLocation().distance(e.getLocation())))
+                            .min(Comparator.comparing(e -> turret.getLocation().distanceSquared(e.getLocation())))
                             .orElse(null);
                 }
                 if (target != null && cooldown-- <= 0) {
@@ -299,7 +299,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                             .filter(e -> e instanceof ArmorStand)
                             .map(e -> (LivingEntity) e);
                     LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
-                            .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
+                            .min(Comparator.comparing(p -> p.getLocation().distanceSquared(monster.getLocation())))
                             .orElse(null);
                     monster.setTarget(target);
                 }
@@ -381,7 +381,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     Optional<LivingEntity> target = golem.getWorld().getEntities().stream()
                             .filter(e -> e instanceof Creature && !(e instanceof IronGolem))
                             .map(e -> (LivingEntity) e)
-                            .min(Comparator.comparing(e -> e.getLocation().distance(golem.getLocation())));
+                            .min(Comparator.comparing(e -> e.getLocation().distanceSquared(golem.getLocation())));
                     golem.setTarget(target.orElse(null));
                     if (cooldown <= 55 && golem.getTarget() != null && golem.getTarget().getLocation().distance(golem.getLocation()) < 3) {
                         pocket = Optional.of(golem.getTarget().getClass());
