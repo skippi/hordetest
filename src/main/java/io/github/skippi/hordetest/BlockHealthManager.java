@@ -22,6 +22,7 @@ public class BlockHealthManager {
     public BlockHealthManager() {}
 
     public void damage(Block block, double amount) {
+        if (block.getType().equals(Material.BEDROCK)) return;
         BlockPreDamageEvent event = new BlockPreDamageEvent(block, amount);
         Bukkit.getPluginManager().callEvent(event);
         setHealth(block, getHealth(block) - event.getDamage());
