@@ -407,11 +407,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         if (cooldown <= 0 && dist <= 100) {
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             yeeted.setCollidable(false);
-                            double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
+                            double areaDeviation = dist / 100 * 16;
+                            @NotNull Location targetLoc = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2);
+                            double time = yeeted.getLocation().distance(targetLoc) / 1.2;
                             new BukkitRunnable() {
                                 double vy = 0.08 * time;
                                 double vh = 0.6;
-                                Vector horzDir = golem.getTarget().getLocation().subtract(yeeted.getLocation()).toVector().setY(0).normalize();
+                                Vector horzDir = targetLoc.subtract(yeeted.getLocation()).toVector().setY(0).normalize();
 
                                 @Override
                                 public void run() {
