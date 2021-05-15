@@ -26,6 +26,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -406,7 +407,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         if (cooldown <= 0 && dist <= 100) {
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             yeeted.setCollidable(false);
-
                             double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
                             new BukkitRunnable() {
                                 double vy = 0.08 * time;
@@ -416,7 +416,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                                 @Override
                                 public void run() {
                                     @NotNull Location newPos = yeeted.getLocation().clone().add(horzDir.clone().multiply(vh)).add(0, vy, 0);
-                                    if (newPos.getBlock().isSolid() || newPos.getY() < 0) {
+                                    @NotNull Vector dir = newPos.toVector().subtract(yeeted.getLocation().toVector()).normalize();
+                                    double innerDist = newPos.clone().distance(yeeted.getLocation());
+                                    @Nullable RayTraceResult raytrace = yeeted.getWorld().rayTraceBlocks(yeeted.getLocation(), dir, innerDist);
+                                    if ((raytrace != null && raytrace.getHitBlock() != null) || newPos.getY() < 0) {
                                         yeeted.setCollidable(true);
                                         cancel();
                                         return;
