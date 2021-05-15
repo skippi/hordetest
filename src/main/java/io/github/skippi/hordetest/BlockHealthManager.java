@@ -5,6 +5,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 
 import org.apache.commons.lang.math.RandomUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -21,11 +22,18 @@ public class BlockHealthManager {
     public BlockHealthManager() {}
 
     public void damage(Block block, double amount) {
-        setHealth(block, getHealth(block) - amount);
+        BlockPreDamageEvent event = new BlockPreDamageEvent(block, amount);
+        Bukkit.getPluginManager().callEvent(event);
+        setHealth(block, getHealth(block) - event.getDamage());
         animateBlockBreak(block, (getMaxHealth(block) - getHealth(block)) / getMaxHealth(block));
     }
 
-    private double getHealth(Block block) {
+    public void reset(Block block) {
+        setHealth(block, getMaxHealth(block));
+        animateBlockBreak(block, (getMaxHealth(block) - getHealth(block)) / getMaxHealth(block));
+    }
+
+    public double getHealth(Block block) {
         return blockHealths.getOrDefault(block, getMaxHealth(block));
     }
 
@@ -40,7 +48,7 @@ public class BlockHealthManager {
         }
     }
 
-    private double getMaxHealth(Block block) {
+    public double getMaxHealth(Block block) {
         if (Arrays.asList(Material.SANDSTONE, Material.STONE, Material.DIORITE, Material.GRANITE).contains(block.getType())) {
             return 0.5;
         }

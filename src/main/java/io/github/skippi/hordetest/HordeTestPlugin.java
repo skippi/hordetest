@@ -2,6 +2,7 @@ package io.github.skippi.hordetest;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import com.google.common.primitives.Ints;
@@ -16,9 +17,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,7 +32,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
@@ -49,6 +54,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
     }
@@ -63,7 +69,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     private boolean isArrowTurret(Entity entity) {
-        System.out.println(entity.getCustomName());
         return entity instanceof ArmorStand && entity.getCustomName().startsWith("Arrow Turret");
     }
 
@@ -123,6 +128,82 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }.runTaskTimer(this, 0, 1);
     }
 
+    private static Map<UUID, Inventory> repairTurretInvs = new HashMap<>();
+
+    private void spawnRepairTurret(Location loc) {
+        @NotNull ArmorStand turret = loc.getWorld().spawn(loc, ArmorStand.class);
+        turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.STONE));
+        turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
+        turret.setCustomName("Repair Turret");
+        turret.setCustomNameVisible(true);
+        turret.setHealth(5);
+        repairTurretInvs.put(turret.getUniqueId(), Bukkit.createInventory(null, InventoryType.DISPENSER));
+    }
+
+    private boolean isRepairTurret(Entity entity) {
+        return entity instanceof ArmorStand && entity.getCustomName().startsWith("Repair Turret");
+    }
+
+    private boolean isRepairTurret(ItemStack stack) {
+        return stack.getType().equals(Material.BOOK) && stack.getItemMeta().getCustomModelData() == 2;
+    }
+
+    private ItemStack makeRepairTurret() {
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+        meta.setCustomModelData(2);
+        meta.displayName(Component.text("Repair Turret"));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    @EventHandler
+    private void repairTurretRightClick(PlayerInteractAtEntityEvent event) {
+        if (!isRepairTurret(event.getRightClicked())) return;
+        if (event.getPlayer().isSneaking()) {
+            event.getPlayer().openInventory(repairTurretInvs.get(event.getRightClicked().getUniqueId()));
+        } else {
+            event.getRightClicked().remove();
+            event.getPlayer().getInventory().addItem(makeRepairTurret());
+        }
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void repairTurretRepair(BlockPreDamageEvent event) {
+        Optional<ArmorStand> maybeTurret = event.getBlock().getWorld().getEntities().stream()
+                .filter(e -> e.isValid() && isRepairTurret(e))
+                .filter(e -> e.getLocation().distance(event.getBlock().getLocation()) <= 10)
+                .map(e -> (ArmorStand) e)
+                .findFirst();
+        if (maybeTurret.isPresent()) {
+            ArmorStand turret = maybeTurret.get();
+            Inventory inv = repairTurretInvs.get(turret.getUniqueId());
+            List<ItemStack> supply = StreamSupport.stream(inv.spliterator(), false)
+                    .filter(i -> i != null && i.getType().equals(event.getBlock().getType()))
+                    .collect(Collectors.toList());
+            for (ItemStack item : supply) {
+                if (item.getAmount() > 0 && event.getDamage() >= getBlockHealthManager().getHealth(event.getBlock())) {
+                    getBlockHealthManager().reset(event.getBlock());
+                    event.setDamage(event.getDamage() - getBlockHealthManager().getHealth(event.getBlock()));
+                    item.setAmount(item.getAmount() - 1);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    private void placeRepairTurret(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getItem() == null || !isRepairTurret(event.getItem())) return;
+        assert event.getClickedBlock() != null;
+        spawnRepairTurret(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5));
+        if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
+            event.getItem().setAmount(event.getItem().getAmount() - 1);
+        }
+    }
+
+
     @EventHandler
     private void skeletonNoFriendlyFire(ProjectileCollideEvent event) {
         if (!(event.getEntity().getShooter() instanceof Skeleton)) return;
@@ -141,6 +222,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
         entity.setNoDamageTicks(0);
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void repairTurretCleanup(EntityRemoveFromWorldEvent event) {
+        repairTurretInvs.remove(event.getEntity().getUniqueId());
     }
 
     @EventHandler
