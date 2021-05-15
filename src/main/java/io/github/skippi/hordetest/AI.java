@@ -1,5 +1,6 @@
 package io.github.skippi.hordetest;
 
+import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -16,7 +17,8 @@ import java.util.stream.Stream;
 
 public class AI {
     public static void climb(Zombie zombie, Vector dest, double climbSpeed) {
-        if (zombie.getEyeLocation().clone().add(0,  0.5, 0).getBlock().getType().isSolid()) return;
+        @NotNull Location newLoc = zombie.getLocation().clone().add(0, climbSpeed, 0);
+        if (newLoc.getBlock().isSolid() || newLoc.getBlock().getRelative(BlockFace.UP).isSolid() || newLoc.getBlock().getRelative(0, 2, 0).isSolid()) return;
         zombie.teleport(zombie.getLocation().clone().add(0, climbSpeed, 0));
         @NotNull Vector climbDir = dest.clone().subtract(zombie.getLocation().toVector()).normalize();
         double moveSpeed = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
