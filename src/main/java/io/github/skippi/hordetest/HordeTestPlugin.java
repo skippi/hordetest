@@ -405,6 +405,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         double dist = golem.getTarget().getLocation().distance(golem.getLocation());
                         golem.setAI(dist > 100);
                         if (cooldown <= 0 && dist <= 100) {
+                            golem.swingMainHand();
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             yeeted.setCollidable(false);
                             double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
