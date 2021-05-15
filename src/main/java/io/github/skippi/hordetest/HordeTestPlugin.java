@@ -49,6 +49,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return BLOCK_HEALTH_MANAGER;
     }
 
+    public static HordeTestPlugin getInstance() { return INSTANCE; }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -361,95 +363,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void ironGolemAI(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof IronGolem)) return;
-        IronGolem golem = (IronGolem) entity;
-        new BukkitRunnable() {
-            int cooldown = 0;
-            Optional<Class<? extends LivingEntity>> pocket = Optional.empty();
-
-            @Override
-            public void run() {
-                if (!golem.isValid()) {
-                    cancel();
-                    return;
-                }
-                cooldown--;
-                if (!pocket.isPresent()) {
-                    golem.setAI(true);
-                    Optional<LivingEntity> target = golem.getWorld().getEntities().stream()
-                            .filter(e -> e instanceof Creature && !(e instanceof IronGolem))
-                            .map(e -> (LivingEntity) e)
-                            .min(Comparator.comparing(e -> e.getLocation().distanceSquared(golem.getLocation())));
-                    golem.setTarget(target.orElse(null));
-                    if (cooldown <= 55 && golem.getTarget() != null && golem.getTarget().getLocation().distance(golem.getLocation()) < 3) {
-                        pocket = Optional.of(golem.getTarget().getClass());
-                        golem.getTarget().remove();
-                        golem.setTarget(null);
-                    }
-                } else {
-                    if (golem.getTarget() == null) {
-                        Stream<Player> players = golem.getWorld().getPlayers()
-                                .stream()
-                                .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
-                        Stream<LivingEntity> targetables = golem.getWorld().getEntities().stream()
-                                .filter(e -> e.isValid() && e instanceof ArmorStand)
-                                .map(e -> (LivingEntity) e);
-                        LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
-                                .min(Comparator.comparing(p -> p.getLocation().distance(golem.getLocation())))
-                                .orElse(null);
-                        golem.setTarget(target);
-                    }
-                    if (golem.getTarget() != null) {
-                        double dist = golem.getTarget().getLocation().distance(golem.getLocation());
-                        golem.setAI(dist > 100);
-                        if (cooldown <= 0 && dist <= 100) {
-                            LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
-                            yeeted.setCollidable(false);
-                            double areaDeviation = dist / 100 * 16;
-                            @NotNull Location targetLoc = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2);
-                            double time = yeeted.getLocation().distance(targetLoc) / 1.2;
-                            new BukkitRunnable() {
-                                double vy = 0.08 * time;
-                                double vh = 0.6;
-                                Vector horzDir = targetLoc.subtract(yeeted.getLocation()).toVector().setY(0).normalize();
-
-                                @Override
-                                public void run() {
-                                    @NotNull Location newPos = yeeted.getLocation().clone().add(horzDir.clone().multiply(vh)).add(0, vy, 0);
-                                    @NotNull Vector dir = newPos.toVector().subtract(yeeted.getLocation().toVector()).normalize();
-                                    double innerDist = newPos.clone().distance(yeeted.getLocation());
-                                    @Nullable RayTraceResult raytrace = yeeted.getWorld().rayTraceBlocks(yeeted.getLocation(), dir, innerDist);
-                                    if ((raytrace != null && raytrace.getHitBlock() != null) || newPos.getY() < 0) {
-                                        yeeted.setCollidable(true);
-                                        cancel();
-                                        return;
-                                    }
-                                    yeeted.teleport(newPos);
-                                    vy -= 0.08;
-                                }
-                            }.runTaskTimer(INSTANCE, 0, 1);
-                            pocket = Optional.empty();
-                            golem.setTarget(null);
-                            cooldown = 60;
-                        }
-                    }
-                }
-            }
-        }.runTaskTimer(this, 0, 1);
-    }
-
-    @EventHandler
-    private void golemTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getEntity() instanceof IronGolem) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    private void monsterTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getEntity() instanceof Monster) {
+    private void creatureTarget(EntityTargetLivingEntityEvent event) {
+        if (event.getEntity() instanceof Creature) {
             event.setCancelled(true);
         }
     }
@@ -483,6 +398,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }.runTaskTimer(this, 0 ,1);
+    }
+
+    @EventHandler
+    private void ironGolemInit(CreatureSpawnEvent event) {
+        if (event.getEntity() instanceof IronGolem) {
+            AI.addTossAI((IronGolem) event.getEntity());
+        }
     }
 
     @EventHandler
