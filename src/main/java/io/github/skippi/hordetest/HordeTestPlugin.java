@@ -2,7 +2,6 @@ package io.github.skippi.hordetest;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
-import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import com.google.common.primitives.Ints;
@@ -103,26 +102,27 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         turret.setCustomNameVisible(true);
         turret.setHealth(5);
         new BukkitRunnable() {
-            Monster target = null;
+            LivingEntity target = null;
             int cooldown = 0;
 
             private boolean isTargettable(Entity e) {
-                return e.isValid() && e instanceof Monster && e.getLocation().distance(turret.getLocation()) < 75 && turret.hasLineOfSight(e);
+                return e instanceof Creature && e.isValid() && e.getLocation().distance(turret.getLocation()) < 75 && turret.hasLineOfSight(e);
             }
 
             @Override
             public void run() {
                 if (!turret.isValid()) return;
-                if (target != null && isTargettable(target) && cooldown-- <= 0) {
+                if (!isTargettable(target)) {
+                    target = (LivingEntity) turret.getWorld().getEntities().stream()
+                            .filter(this::isTargettable)
+                            .min(Comparator.comparing(e -> turret.getLocation().distance(e.getLocation())))
+                            .orElse(null);
+                }
+                if (target != null && cooldown-- <= 0) {
                     @NotNull Vector dir = target.getEyeLocation().clone().subtract(turret.getEyeLocation()).toVector().normalize();
                     @NotNull Arrow arrow = turret.launchProjectile(Arrow.class);
                     arrow.setVelocity(dir.clone().multiply(3));
                     cooldown = 20;
-                } else {
-                    target = (Monster) turret.getWorld().getEntities().stream()
-                            .filter(this::isTargettable)
-                            .min(Comparator.comparing(e -> turret.getLocation().distance(e.getLocation())))
-                            .orElse(null);
                 }
             }
         }.runTaskTimer(this, 0, 1);
@@ -290,16 +290,18 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                Stream<Player> players = monster.getWorld().getPlayers()
-                        .stream()
-                        .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
-                Stream<LivingEntity> targetables = monster.getWorld().getEntities().stream()
-                        .filter(e -> e.isValid() && e instanceof ArmorStand)
-                        .map(e -> (LivingEntity) e);
-                LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
-                        .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
-                        .orElse(null);
-                monster.setTarget(target);
+                if (monster.getTarget() == null || !monster.getTarget().isValid()) {
+                    Stream<Player> players = monster.getWorld().getPlayers()
+                            .stream()
+                            .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
+                    Stream<LivingEntity> targetables = monster.getWorld().getEntities().stream()
+                            .filter(e -> e instanceof ArmorStand)
+                            .map(e -> (LivingEntity) e);
+                    LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
+                            .min(Comparator.comparing(p -> p.getLocation().distance(monster.getLocation())))
+                            .orElse(null);
+                    monster.setTarget(target);
+                }
             }
         }.runTaskTimer(this, 0, 2);
     }
@@ -441,6 +443,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void monsterTarget(EntityTargetLivingEntityEvent event) {
+        if (event.getEntity() instanceof Monster) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     private void creeperNoFriendlyFire(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Creeper)) return;
         if (!(event.getEntity() instanceof Monster)) return;
@@ -489,7 +498,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
                 if (zombie.getWorld().getEntities()
                         .stream()
-                        .anyMatch(e -> e.isValid() && e != zombie && e instanceof Zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
+                        .anyMatch(e -> e instanceof Zombie && e != zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
                     AI.climb(zombie, target.getLocation().toVector());
                 }
             }
