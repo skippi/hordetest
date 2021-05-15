@@ -529,15 +529,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                BlockIterator iter = new BlockIterator(entity.getWorld(), entity.getLocation().getBlock().getLocation().toVector(), new Vector(0, -1, 0), 0, 3);
-                boolean isInLight = entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 0;
-                while (iter.hasNext()) {
-                    @NotNull Block block = iter.next();
-                    if (block.isSolid()) {
-                        break;
-                    }
-                    isInLight = block.getLightFromBlocks() > 0;
-                }
+                boolean isInLight = entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 5;
                 setExposureTime(entity, Ints.constrainToRange(getExposureTime(entity) + (isInLight ? 1 : -1), -80, 20));
                 if (getExposureTime(entity) <= 0) {
                     entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75);
