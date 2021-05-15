@@ -497,14 +497,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     cancel();
                     return;
                 }
-                if (getExposureTime(zombie) > 0) return;
+                double climbSpeed = 0.3 + 0.65 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
                 if (zombie.getWorld().getEntities()
                         .stream()
                         .anyMatch(e -> e instanceof Zombie && e != zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
-                    AI.climb(zombie, target.getLocation().toVector());
+                    AI.climb(zombie, target.getLocation().toVector(), climbSpeed);
                 }
             }
         }.runTaskTimer(this, 0, 4);

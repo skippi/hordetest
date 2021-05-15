@@ -15,9 +15,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AI {
-    public static void climb(Zombie zombie, Vector dest) {
+    public static void climb(Zombie zombie, Vector dest, double climbSpeed) {
         if (zombie.getEyeLocation().clone().add(0,  0.5, 0).getBlock().getType().isSolid()) return;
-        zombie.teleport(zombie.getLocation().clone().add(0, 0.6, 0));
+        zombie.teleport(zombie.getLocation().clone().add(0, climbSpeed, 0));
         @NotNull Vector climbDir = dest.clone().subtract(zombie.getLocation().toVector()).normalize();
         double moveSpeed = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
         zombie.setVelocity(climbDir.clone().setY(0).multiply(moveSpeed));
