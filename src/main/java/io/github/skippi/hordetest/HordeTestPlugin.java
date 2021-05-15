@@ -379,7 +379,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (!pocket.isPresent()) {
                     golem.setAI(true);
                     Optional<LivingEntity> target = golem.getWorld().getEntities().stream()
-                            .filter(e -> e != golem && e.isValid() && e instanceof Monster)
+                            .filter(e -> e instanceof Creature && !(e instanceof IronGolem))
                             .map(e -> (LivingEntity) e)
                             .min(Comparator.comparing(e -> e.getLocation().distance(golem.getLocation())));
                     golem.setTarget(target.orElse(null));
@@ -405,7 +405,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         double dist = golem.getTarget().getLocation().distance(golem.getLocation());
                         golem.setAI(dist > 100);
                         if (cooldown <= 0 && dist <= 100) {
-                            golem.swingMainHand();
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             yeeted.setCollidable(false);
                             double time = yeeted.getLocation().distance(golem.getTarget().getLocation()) / 1.2;
