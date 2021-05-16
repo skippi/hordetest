@@ -263,7 +263,7 @@ public class AI {
                 } else {
                     speedAttr.setBaseValue(0.75 - 0.0175 * getExposureTime(zombie));
                 }
-                if (zombie.isInWater() && zombie.getTarget() != null && zombie.getTarget().getLocation().distance(zombie.getLocation()) > 1.5) {
+                if ((zombie.isInWater() || zombie.isInLava()) && zombie.getTarget() != null && zombie.getTarget().getLocation().distance(zombie.getLocation()) > 1.5) {
                     @NotNull Vector dir = zombie.getTarget().getLocation().clone().subtract(zombie.getLocation()).toVector().normalize();
                     @NotNull Vector horz = dir.clone().setY(0).multiply(speedAttr.getValue() * 0.7);
                     zombie.setVelocity(horz.clone().setY(dir.getY() * 0.3));
