@@ -101,6 +101,21 @@ public class AI {
                 .min(Comparator.comparing(p -> p.getLocation().distanceSquared(loc)));
     }
 
+    public static void addAutoTargetAI(Creature creature) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!creature.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (creature.getTarget() == null || !creature.getTarget().isValid()) {
+                    getNearestHumanTarget(creature.getLocation()).ifPresent(creature::setTarget);
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
     public static void addClimbAI(Zombie zombie) {
         new BukkitRunnable() {
             @Override
@@ -142,6 +157,10 @@ public class AI {
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
                 boolean isInLight = zombie.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 5;
                 setExposureTime(zombie, Ints.constrainToRange(getExposureTime(zombie) + (isInLight ? 1 : -1), -80, 20));
                 AttributeInstance speedAttr = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);

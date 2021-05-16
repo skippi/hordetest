@@ -121,7 +121,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             public void run() {
                 if (!turret.isValid()) return;
                 if (!isTargettable(target)) {
-                    target = (LivingEntity) turret.getWorld().getEntities().stream()
+                    target = turret.getWorld().getLivingEntities().stream()
                             .filter(this::isTargettable)
                             .min(Comparator.comparing(e -> turret.getLocation().distanceSquared(e.getLocation())))
                             .orElse(null);
@@ -179,7 +179,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void repairTurretRepair(BlockPreDamageEvent event) {
-        Optional<ArmorStand> maybeTurret = event.getBlock().getWorld().getEntities().stream()
+        Optional<ArmorStand> maybeTurret = event.getBlock().getWorld().getLivingEntities().stream()
                 .filter(e -> e.isValid() && isRepairTurret(e))
                 .filter(e -> e.getLocation().distance(event.getBlock().getLocation()) <= 10)
                 .map(e -> (ArmorStand) e)
@@ -292,26 +292,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void monsterAcquire(CreatureSpawnEvent event) {
-        @NotNull Entity entity = event.getEntity();
-        if (!(entity instanceof Monster)) return;
-        Monster monster = (Monster) entity;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (monster.getTarget() == null || !monster.getTarget().isValid()) {
-                    Stream<Player> players = monster.getWorld().getPlayers()
-                            .stream()
-                            .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
-                    Stream<LivingEntity> targetables = monster.getWorld().getEntities().stream()
-                            .filter(e -> e instanceof ArmorStand)
-                            .map(e -> (LivingEntity) e);
-                    LivingEntity target = Stream.concat(players.map(p -> (LivingEntity) p), targetables)
-                            .min(Comparator.comparing(p -> p.getLocation().distanceSquared(monster.getLocation())))
-                            .orElse(null);
-                    monster.setTarget(target);
-                }
-            }
-        }.runTaskTimer(this, 0, 2);
+        if (event.getEntity() instanceof Monster) {
+            AI.addAutoTargetAI((Creature) event.getEntity());
+        }
     }
 
     @EventHandler
