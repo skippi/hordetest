@@ -214,6 +214,16 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void turretTakeDamage(EntityDamageEvent event) {
+        if (event.getEntity() instanceof ArmorStand) {
+            ArmorStand turret = (ArmorStand) event.getEntity();
+            turret.setHealth(Math.max(0, turret.getHealth() - event.getFinalDamage()));
+            turret.setNoDamageTicks(turret.getMaximumNoDamageTicks());
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     private void repairTurretCleanup(EntityRemoveFromWorldEvent event) {
         repairTurretInvs.remove(event.getEntity().getUniqueId());
     }
