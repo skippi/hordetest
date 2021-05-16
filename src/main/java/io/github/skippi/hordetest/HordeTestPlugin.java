@@ -4,6 +4,10 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
+import io.github.skippi.hordetest.gravity.PhysicsScheduler;
+import io.github.skippi.hordetest.gravity.StressSystem;
+import io.github.skippi.hordetest.gravity.UpdateNeighborStressAction;
+import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
@@ -13,6 +17,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
@@ -37,6 +42,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static ProtocolManager PM;
     private static final BlockHealthManager BLOCK_HEALTH_MANAGER = new BlockHealthManager();
     private static HordeTestPlugin INSTANCE;
+    private static PhysicsScheduler PHYSICS_SCHEDULER = new PhysicsScheduler();
+    public static StressSystem SS = new StressSystem();
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -52,6 +59,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
         INSTANCE = this;
@@ -420,5 +428,12 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private void hordeRemove(EntityRemoveFromWorldEvent event) {
         hordeIds.remove(event.getEntity().getUniqueId());
         AI.cleanupExposure(event.getEntity().getUniqueId());
+    }
+
+    @EventHandler
+    private void gravityPhysics(BlockPhysicsEvent event) {
+        Block block = event.getBlock();
+        PHYSICS_SCHEDULER.schedule(new UpdateNeighborStressAction(block));
+        PHYSICS_SCHEDULER.schedule(new UpdateStressAction(block));
     }
 }
