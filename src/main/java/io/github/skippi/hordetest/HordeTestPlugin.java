@@ -108,34 +108,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         turret.setCustomName("Arrow Turret");
         turret.setCustomNameVisible(true);
         turret.setHealth(5);
-        new BukkitRunnable() {
-            LivingEntity target = null;
-            int cooldown = 0;
-
-            private boolean isTargettable(Entity e) {
-                return e instanceof Creature && e.isValid() && e.getLocation().distance(turret.getLocation()) < 75 && turret.hasLineOfSight(e);
-            }
-
-            @Override
-            public void run() {
-                if (!turret.isValid()) {
-                    cancel();
-                    return;
-                }
-                if (!isTargettable(target)) {
-                    target = turret.getWorld().getLivingEntities().stream()
-                            .filter(this::isTargettable)
-                            .min(Comparator.comparing(e -> turret.getLocation().distanceSquared(e.getLocation())))
-                            .orElse(null);
-                }
-                if (target != null && cooldown-- <= 0) {
-                    @NotNull Vector dir = target.getEyeLocation().clone().subtract(turret.getEyeLocation()).toVector().normalize();
-                    @NotNull Arrow arrow = turret.launchProjectile(Arrow.class);
-                    arrow.setVelocity(dir.clone().multiply(3));
-                    cooldown = 20;
-                }
-            }
-        }.runTaskTimer(this, 0, 1);
+        AI.addArrowTurretAI(turret);
     }
 
     private static Map<UUID, Inventory> repairTurretInvs = new HashMap<>();
