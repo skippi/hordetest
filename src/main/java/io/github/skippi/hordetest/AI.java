@@ -1,9 +1,11 @@
 package io.github.skippi.hordetest;
 
+import com.google.common.primitives.Ints;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
@@ -13,10 +15,7 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,6 +99,88 @@ public class AI {
                 .filter(e -> e instanceof ArmorStand);
         return Stream.concat(players.map(p -> (LivingEntity) p), turrets)
                 .min(Comparator.comparing(p -> p.getLocation().distanceSquared(loc)));
+    }
+
+    public static void addClimbAI(Zombie zombie) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
+                double climbSpeed = 0.3 + 0.65 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
+                @Nullable LivingEntity target = zombie.getTarget();
+                if (target == null) return;
+                if (target.getLocation().getY() < zombie.getLocation().getY()) return;
+                if (zombie.getWorld().getLivingEntities()
+                        .stream()
+                        .anyMatch(e -> e != zombie && e instanceof Zombie
+                            && e.getLocation().getY() <= zombie.getLocation().getY()
+                            && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
+                    AI.climb(zombie, target.getLocation().toVector(), climbSpeed);
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 4);
+    }
+
+    private static final Map<UUID, Integer> entityExposures = new HashMap<>();
+
+    private static int getExposureTime(LivingEntity entity) {
+        return entityExposures.getOrDefault(entity.getUniqueId(), 0);
+    }
+
+    private static void setExposureTime(LivingEntity entity, int value) {
+        entityExposures.put(entity.getUniqueId(), value);
+    }
+
+    public static void cleanupExposure(UUID id) {
+        entityExposures.remove(id);
+    }
+
+    public static void addSpeedAI(Zombie zombie) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                boolean isInLight = zombie.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 5;
+                setExposureTime(zombie, Ints.constrainToRange(getExposureTime(zombie) + (isInLight ? 1 : -1), -80, 20));
+                AttributeInstance speedAttr = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
+                assert speedAttr != null;
+                if (getExposureTime(zombie) <= 0) {
+                    speedAttr.setBaseValue(0.75);
+                } else {
+                    speedAttr.setBaseValue(0.75 - 0.0175 * getExposureTime(zombie));
+                }
+                if (zombie.isInWater() && zombie.getTarget() != null && zombie.getTarget().getLocation().distance(zombie.getLocation()) > 1.5) {
+                    @NotNull Vector dir = zombie.getTarget().getLocation().clone().subtract(zombie.getLocation()).toVector().normalize();
+                    @NotNull Vector horz = dir.clone().setY(0).multiply(speedAttr.getValue() * 0.7);
+                    zombie.setVelocity(horz.clone().setY(dir.getY() * 0.3));
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
+    public static void addDigAI(Zombie zombie) {
+        new BukkitRunnable() {
+            int cooldown = 0;
+            @Override
+            public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (cooldown-- > 0) return;
+                @Nullable LivingEntity target = zombie.getTarget();
+                if (target == null) return;
+                if (zombie.hasLineOfSight(target)) return;
+                Optional<Block> maybeBlock = AI.findDigTargetBlocks(zombie, target.getLocation().toVector())
+                        .findFirst();
+                if (maybeBlock.isPresent()) {
+                    AI.attack(zombie, maybeBlock.get(), 1);
+                    cooldown = 40;
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
     public static void climb(Zombie zombie, Vector dest, double climbSpeed) {

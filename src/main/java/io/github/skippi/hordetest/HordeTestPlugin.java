@@ -4,11 +4,9 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
-import com.google.common.primitives.Ints;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.*;
@@ -26,7 +24,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BlockIterator;
-import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -310,34 +307,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void zombieDig(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Zombie)) return;
-        Zombie zombie = (Zombie) entity;
-        new BukkitRunnable() {
-            int cooldown = 0;
-
-            @Override
-            public void run() {
-                if (!zombie.isValid()) {
-                    cancel();
-                    return;
-                }
-                if (cooldown-- > 0) return;
-                @Nullable LivingEntity target = zombie.getTarget();
-                if (target == null) return;
-                if (zombie.hasLineOfSight(target)) return;
-                Optional<Block> maybeBlock = AI.findDigTargetBlocks(zombie, target.getLocation().toVector())
-                        .findFirst();
-                if (maybeBlock.isPresent()) {
-                    AI.attack(zombie, maybeBlock.get(), 1);
-                    cooldown = 40;
-                }
-            }
-        }.runTaskTimer(this, 0, 1);
-    }
-
-    @EventHandler
     private void creeperPatience(CreatureSpawnEvent event) {
         @NotNull LivingEntity entity = event.getEntity();
         if (!(entity instanceof Creeper)) return;
@@ -408,28 +377,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void zombieClimb(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Zombie)) return;
-        Zombie zombie = (Zombie) entity;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!zombie.isValid()) {
-                    cancel();
-                    return;
-                }
-                double climbSpeed = 0.3 + 0.65 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
-                @Nullable LivingEntity target = zombie.getTarget();
-                if (target == null) return;
-                if (target.getLocation().getY() < zombie.getLocation().getY()) return;
-                if (zombie.getWorld().getEntities()
-                        .stream()
-                        .anyMatch(e -> e instanceof Zombie && e != zombie && e.getLocation().getY() <= zombie.getLocation().getY() && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
-                    AI.climb(zombie, target.getLocation().toVector(), climbSpeed);
-                }
-            }
-        }.runTaskTimer(this, 0, 4);
+    private void zombieInit(CreatureSpawnEvent event) {
+        if (event.getEntity() instanceof Zombie) {
+            Zombie zombie = (Zombie) event.getEntity();
+            zombie.setAdult();
+            AI.addClimbAI(zombie);
+            AI.addDigAI(zombie);
+            AI.addSpeedAI(zombie);
+        }
     }
 
     @EventHandler
@@ -437,47 +392,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (event.getCause() != EntityDamageEvent.DamageCause.FALL) return;
         if (!(event.getEntity() instanceof Zombie)) return;
         event.setCancelled(true);
-    }
-
-    private static Map<UUID, Integer> zombieExposure = new HashMap<>();
-
-    private static int getExposureTime(LivingEntity entity) {
-        return zombieExposure.getOrDefault(entity.getUniqueId(), 0);
-    }
-
-    private static void setExposureTime(LivingEntity entity, int value) {
-        zombieExposure.put(entity.getUniqueId(), value);
-    }
-
-    @EventHandler
-    private void zombieSpeed(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Zombie)) return;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                boolean isInLight = entity.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 5;
-                setExposureTime(entity, Ints.constrainToRange(getExposureTime(entity) + (isInLight ? 1 : -1), -80, 20));
-                if (getExposureTime(entity) <= 0) {
-                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75);
-                } else {
-                    entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.75 - 0.0175 * getExposureTime(entity));
-                }
-                if (entity.isInWater() && ((Zombie) entity).getTarget() != null && ((Zombie) entity).getTarget().getLocation().distance(entity.getLocation()) > 1.5) {
-                    @NotNull Vector dir = ((Zombie) entity).getTarget().getLocation().clone().subtract(entity.getLocation()).toVector().normalize();
-                    @NotNull Vector horz = dir.clone().setY(0).multiply(entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 0.7);
-                    entity.setVelocity(horz.clone().setY(dir.getY() * 0.3));
-                }
-            }
-        }.runTaskTimer(this, 0, 1);
-    }
-
-    @EventHandler
-    private void zombieAdults(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Zombie)) return;
-        Zombie zombie = (Zombie) entity;
-        zombie.setAdult();
     }
 
     final Set<UUID> hordeIds = new HashSet<>();
@@ -505,6 +419,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @EventHandler
     private void hordeRemove(EntityRemoveFromWorldEvent event) {
         hordeIds.remove(event.getEntity().getUniqueId());
-        zombieExposure.remove(event.getEntity().getUniqueId());
+        AI.cleanupExposure(event.getEntity().getUniqueId());
     }
 }
