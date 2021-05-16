@@ -35,7 +35,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
@@ -119,7 +118,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
             @Override
             public void run() {
-                if (!turret.isValid()) return;
+                if (!turret.isValid()) {
+                    cancel();
+                    return;
+                }
                 if (!isTargettable(target)) {
                     target = turret.getWorld().getLivingEntities().stream()
                             .filter(this::isTargettable)
@@ -346,7 +348,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
             @Override
             public void run() {
-                if (!spider.isValid()) return;
+                if (!spider.isValid()) {
+                    cancel();
+                    return;
+                }
                 if (cooldown-- > 0) return;
                 @Nullable LivingEntity target = spider.getTarget();
                 if (target == null || spider.hasLineOfSight(target)) return;

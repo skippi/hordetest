@@ -76,6 +76,10 @@ public class AI {
 
             @Override
             public void run() {
+                if (!entity.isValid()) {
+                    cancel();
+                    return;
+                }
                 @NotNull Location newPos = entity.getLocation().clone().add(horzDir.clone().multiply(horzSpeed)).add(0, vy, 0);
                 @NotNull Vector dir = newPos.toVector().subtract(entity.getLocation().toVector()).normalize();
                 double innerDist = newPos.clone().distance(entity.getLocation());
