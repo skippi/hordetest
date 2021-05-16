@@ -63,6 +63,12 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
+        for (World world : Bukkit.getWorlds()) {
+            for (LivingEntity entity : world.getLivingEntities()) {
+                if (isArrowTurret(entity)) AI.addArrowTurretAI((ArmorStand) entity);
+                else if (entity instanceof IronGolem) AI.addTossAI((IronGolem) entity);
+            }
+        }
     }
 
     private ItemStack makeArrowTurret() {
@@ -236,65 +242,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void skeletonAlwaysFire(EntitySpawnEvent event) {
-        @NotNull Entity entity = event.getEntity();
-        if (!(entity instanceof Skeleton)) return;
-        Skeleton skeleton = (Skeleton) entity;
-        BukkitRunnable task = new BukkitRunnable() {
-            int cooldown = 0;
-
-            @Override
-            public void run() {
-                if (skeleton.isDead()) {
-                    cancel();
-                    return;
-                }
-                @Nullable LivingEntity target = skeleton.getTarget();
-                if (target == null || skeleton.hasLineOfSight(target)) {
-                    skeleton.setAI(true);
-                } else {
-                    skeleton.setAI(skeleton.getLocation().distance(target.getLocation()) > 20);
-                    --cooldown;
-                    if (cooldown <= 0) {
-                        skeleton.rangedAttack(target, 1);
-                        cooldown = 30;
-                    }
-                }
-            }
-        };
-        task.runTaskTimer(this, 0, 1);
-    }
-
-    @EventHandler
-    private void monsterAcquire(CreatureSpawnEvent event) {
-        if (event.getEntity() instanceof Monster) {
-            AI.addAutoTargetAI((Creature) event.getEntity());
-        }
-    }
-
-    @EventHandler
-    private void creeperPatience(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Creeper)) return;
-        Creeper creeper = (Creeper) entity;
-        new BukkitRunnable() {
-            int timer = 0;
-            Location lastPos = creeper.getLocation();
-            @Override
-            public void run() {
-                if (!creeper.isValid()) {
-                    cancel();
-                    return;
-                }
-                if (timer++ < 80) return;
-                double dist = creeper.getLocation().distance(lastPos);
-                if (dist < 3) {
-                    creeper.ignite();
-                }
-                lastPos = creeper.getLocation();
-                timer = 0;
-            }
-        }.runTaskTimer(this, 0, 1);
+    private void initEntity(CreatureSpawnEvent event) {
+        AI.init(event.getEntity());
     }
 
     @EventHandler
@@ -309,51 +258,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (!(event.getDamager() instanceof Creeper)) return;
         if (!(event.getEntity() instanceof Monster)) return;
         event.setCancelled(true);
-    }
-
-    @EventHandler
-    private void spiderBreakBlock(CreatureSpawnEvent event) {
-        @NotNull LivingEntity entity = event.getEntity();
-        if (!(entity instanceof Spider)) return;
-        Spider spider = (Spider) entity;
-        new BukkitRunnable() {
-            int cooldown = 0;
-
-            @Override
-            public void run() {
-                if (!spider.isValid()) {
-                    cancel();
-                    return;
-                }
-                if (cooldown-- > 0) return;
-                @Nullable LivingEntity target = spider.getTarget();
-                if (target == null || spider.hasLineOfSight(target)) return;
-                Optional<Block> maybeBlock = AI.findDigTargetBlocks(spider, target.getLocation().toVector())
-                        .findFirst();
-                if (maybeBlock.isPresent()) {
-                    AI.attack(spider, maybeBlock.get(), 1);
-                    cooldown = 40;
-                }
-            }
-        }.runTaskTimer(this, 0 ,1);
-    }
-
-    @EventHandler
-    private void ironGolemInit(CreatureSpawnEvent event) {
-        if (event.getEntity() instanceof IronGolem) {
-            AI.addTossAI((IronGolem) event.getEntity());
-        }
-    }
-
-    @EventHandler
-    private void zombieInit(CreatureSpawnEvent event) {
-        if (event.getEntity() instanceof Zombie) {
-            Zombie zombie = (Zombie) event.getEntity();
-            zombie.setAdult();
-            AI.addClimbAI(zombie);
-            AI.addDigAI(zombie);
-            AI.addSpeedAI(zombie);
-        }
     }
 
     @EventHandler

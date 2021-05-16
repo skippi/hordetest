@@ -20,6 +20,95 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AI {
+    public static void init(LivingEntity entity) {
+        if (entity instanceof Monster) {
+            AI.addAutoTargetAI((Creature) entity);
+        }
+        if (entity instanceof IronGolem) {
+            AI.addTossAI((IronGolem) entity);
+        } else if (entity instanceof Zombie) {
+            Zombie zombie = (Zombie) entity;
+            zombie.setAdult();
+            AI.addClimbAI(zombie);
+            AI.addDigAI(zombie);
+            AI.addSpeedAI(zombie);
+        } else if (entity instanceof Skeleton) {
+            AI.addAttackAI((Skeleton) entity);
+        } else if (entity instanceof Creeper) {
+            AI.addPatienceAI((Creeper) entity);
+        } else if (entity instanceof Spider) {
+            AI.addDigAI((Spider) entity);
+        }
+    }
+
+    public static void addDigAI(Spider spider) {
+        new BukkitRunnable() {
+            int cooldown = 0;
+            @Override
+            public void run() {
+                if (!spider.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (cooldown-- > 0) return;
+                @Nullable LivingEntity target = spider.getTarget();
+                if (target == null || spider.hasLineOfSight(target)) return;
+                Optional<Block> maybeBlock = AI.findDigTargetBlocks(spider, target.getLocation().toVector())
+                        .findFirst();
+                if (maybeBlock.isPresent()) {
+                    AI.attack(spider, maybeBlock.get(), 1);
+                    cooldown = 40;
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0 ,1);
+    }
+
+    public static void addPatienceAI(Creeper creeper) {
+        new BukkitRunnable() {
+            int timer = 0;
+            Location lastPos = creeper.getLocation();
+            @Override
+            public void run() {
+                if (!creeper.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (timer++ < 80) return;
+                double dist = creeper.getLocation().distance(lastPos);
+                if (dist < 3) {
+                    creeper.ignite();
+                }
+                lastPos = creeper.getLocation();
+                timer = 0;
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
+    public static void addAttackAI(Skeleton skeleton) {
+        new BukkitRunnable() {
+            int cooldown = 0;
+
+            @Override
+            public void run() {
+                if (skeleton.isDead()) {
+                    cancel();
+                    return;
+                }
+                @Nullable LivingEntity target = skeleton.getTarget();
+                if (target == null || skeleton.hasLineOfSight(target)) {
+                    skeleton.setAI(true);
+                } else {
+                    skeleton.setAI(skeleton.getLocation().distance(target.getLocation()) > 20);
+                    --cooldown;
+                    if (cooldown <= 0) {
+                        skeleton.rangedAttack(target, 1);
+                        cooldown = 30;
+                    }
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
     public static void addTossAI(IronGolem golem) {
         new BukkitRunnable() {
             int cooldown = 0;
