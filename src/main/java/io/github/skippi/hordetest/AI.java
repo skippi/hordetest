@@ -31,6 +31,7 @@ public class AI {
             zombie.setAdult();
             AI.addClimbAI(zombie);
             AI.addDigAI(zombie);
+            AI.addStepHeightAI(zombie);
             AI.addSpeedAI(zombie);
         } else if (entity instanceof Skeleton) {
             AI.addAttackAI((Skeleton) entity);
@@ -39,6 +40,24 @@ public class AI {
         } else if (entity instanceof Spider) {
             AI.addDigAI((Spider) entity);
         }
+    }
+
+    public static void addStepHeightAI(Zombie zombie) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!zombie.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (zombie.getTarget() == null) return;
+                @NotNull Vector dir = zombie.getTarget().getLocation().subtract(zombie.getLocation()).toVector().normalize();
+                @NotNull Block targetFeetBlock = zombie.getLocation().clone().add(dir).getBlock();
+                if (targetFeetBlock.isSolid() && !targetFeetBlock.getRelative(BlockFace.UP).isSolid()) {
+                    zombie.teleport(targetFeetBlock.getRelative(BlockFace.UP).getLocation());
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
     public static void addDigAI(Spider spider) {
