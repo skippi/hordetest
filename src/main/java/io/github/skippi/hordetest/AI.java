@@ -348,6 +348,8 @@ public class AI {
         Block footBlock = entity.getWorld().getBlockAt(x, entity.getLocation().getBlockY(), z);
         @NotNull Block faceBlock = footBlock.getRelative(BlockFace.UP);
         List<Block> blocks = new ArrayList<>();
+        blocks.add(entity.getLocation().getBlock());
+        blocks.add(entity.getLocation().getBlock().getRelative(BlockFace.UP));
         blocks.add(faceBlock);
         if (dir.getY() > 0) {
             blocks.add(entity.getWorld().getBlockAt(entity.getEyeLocation()).getRelative(BlockFace.UP));
@@ -358,7 +360,7 @@ public class AI {
         } else {
             blocks.add(footBlock);
         }
-        return blocks.stream().filter(b -> !b.getType().isAir());
+        return blocks.stream().filter(Block::isSolid);
     }
 
     public static Stream<Block> findDigTargetBlocks(Spider spider, Vector dest) {
