@@ -316,6 +316,7 @@ public class AI {
                     @NotNull Vector dir = target.getEyeLocation().clone().subtract(turret.getEyeLocation()).toVector().normalize();
                     @NotNull Arrow arrow = turret.launchProjectile(Arrow.class);
                     arrow.setVelocity(dir.clone().multiply(3));
+                    arrow.setShooter(turret);
                     cooldown = 17 + RandomUtils.nextInt(3);
                 }
             }

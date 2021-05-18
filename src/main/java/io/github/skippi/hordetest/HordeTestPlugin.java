@@ -308,4 +308,24 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         PHYSICS_SCHEDULER.schedule(new UpdateNeighborStressAction(block));
         PHYSICS_SCHEDULER.schedule(new UpdateStressAction(block));
     }
+
+    @EventHandler
+    private void creeperDeathSuicide(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Creeper)) return;
+        Creeper creeper = (Creeper) event.getEntity();
+        if (event.getDamager() instanceof Player
+                || (event.getDamager() instanceof Projectile
+                    && (((Projectile) event.getDamager()).getShooter() instanceof ArmorStand
+                        || ((Projectile) event.getDamager()).getShooter() instanceof Player))
+                || event.getFinalDamage() < creeper.getHealth()) return;
+        creeper.explode();
+    }
+
+    @EventHandler
+    private void creeperDeathBlockSuicide(EntityDamageByBlockEvent event) {
+        if (!(event.getEntity() instanceof Creeper)) return;
+        Creeper creeper = (Creeper) event.getEntity();
+        if (event.getFinalDamage() < creeper.getHealth()) return;
+        creeper.explode();
+    }
 }
