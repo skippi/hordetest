@@ -206,6 +206,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         } else {
             entity.damage(event.getFinalDamage());
         }
+        if (event.getDamager() instanceof Projectile) {
+            event.getDamager().remove();
+        }
         entity.setNoDamageTicks(0);
         event.setCancelled(true);
     }
