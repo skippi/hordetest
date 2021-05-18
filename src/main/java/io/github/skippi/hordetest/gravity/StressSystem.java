@@ -42,7 +42,7 @@ public class StressSystem {
     private float computeNewStress(Block block) {
         if (!isStressAware(block)) return 0f;
         Block below = block.getRelative(BlockFace.DOWN);
-        float result = getStress(below);
+        float result = isBaseable(below) ? getStress(below) : 1.0f;
         for (Block side : Blocks.getAdjacentBlocks(block)) {
             if (!isBaseable(side)) continue;
             result = Math.min(result, getStress(side) + getStressWeight(side.getType()));
