@@ -176,10 +176,10 @@ public class AI {
     private static void launch(LivingEntity entity, Location to) {
         entity.setCollidable(false);
         double gravity = -0.08;
-        double horzSpeed = 0.6;
-        double time = entity.getLocation().distance(to) / (horzSpeed * 2);
+        double horzSpeed = 1.2;
+        double time = entity.getLocation().toVector().setY(0).distance(to.toVector().setY(0)) / horzSpeed;
         new BukkitRunnable() {
-            double vy = -gravity * time;
+            double vy = (to.getY() - entity.getLocation().getY() - 2) / time - 0.5 * gravity * time;
             Vector horzDir = to.clone().subtract(entity.getLocation()).toVector().setY(0).normalize();
 
             @Override
