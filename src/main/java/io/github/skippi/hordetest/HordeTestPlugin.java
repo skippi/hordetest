@@ -59,7 +59,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
-        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makePaintBrush()));
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeSquarePaintBrush()));
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeLinePaintBrush()));
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
         for (World world : Bukkit.getWorlds()) {
@@ -360,7 +361,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    private static ItemStack makePaintBrush() {
+    private static ItemStack makeSquarePaintBrush() {
         ItemStack brush = new ItemStack(Material.FEATHER);
         ItemMeta meta = brush.getItemMeta();
         meta.setCustomModelData(1);
@@ -369,15 +370,28 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return brush;
     }
 
-    private static boolean isPaintBrush(@NotNull ItemStack stack) {
+    private static boolean isSquarePaintBrush(@NotNull ItemStack stack) {
         return stack.getType().equals(Material.FEATHER) && stack.getItemMeta().getCustomModelData() == 1;
+    }
+
+    private static ItemStack makeCirclePaintBrush() {
+        ItemStack brush = new ItemStack(Material.FEATHER);
+        ItemMeta meta = brush.getItemMeta();
+        meta.setCustomModelData(2);
+        meta.displayName(Component.text("Paint Brush (Circle)"));
+        brush.setItemMeta(meta);
+        return brush;
+    }
+
+    private static boolean isCirclePaintBrush(@NotNull ItemStack stack) {
+        return stack.getType().equals(Material.FEATHER) && stack.getItemMeta().getCustomModelData() == 2;
     }
 
     @EventHandler
     private void paintBrushPlace(BlockPlaceEvent event) {
         @NotNull Player player = event.getPlayer();
         @NotNull ItemStack offHand = player.getInventory().getItemInOffHand();
-        if (isPaintBrush(offHand)) {
+        if (isSquarePaintBrush(offHand)) {
             int radius = offHand.getAmount();
             @NotNull Material type = event.getBlockPlaced().getType();
             StreamSupport.stream(player.getInventory().spliterator(), false)
@@ -388,6 +402,27 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 for (int k = -radius; k <= radius; ++k) {
                     if (i == 0 && k == 0) continue;
                     Block it = event.getBlockPlaced().getRelative(i, 0, k);
+                    Optional<ItemStack> maybeSupply = StreamSupport.stream(player.getInventory().spliterator(), false)
+                            .filter(s -> s != null && s.getType().equals(type))
+                            .findFirst();
+                    if (!it.isSolid() && (player.getGameMode().equals(GameMode.CREATIVE) || maybeSupply.isPresent())) {
+                        it.setType(type);
+                        maybeSupply.ifPresent(s -> s.setAmount(s.getAmount() - 1));
+                    }
+                }
+            }
+        } else if (isCirclePaintBrush(offHand)) {
+            int radius = offHand.getAmount();
+            @NotNull Material type = event.getBlockPlaced().getType();
+            StreamSupport.stream(player.getInventory().spliterator(), false)
+                    .filter(s -> s.getType().equals(type))
+                    .findFirst()
+                    .ifPresent(s -> s.setAmount(s.getAmount() - 1));
+            for (int i = -radius; i <= radius; ++i) {
+                for (int k = -radius; k <= radius; ++k) {
+                    if (i == 0 && k == 0) continue;
+                    Block it = event.getBlockPlaced().getRelative(i, 0, k);
+                    if (i * i + k * k > Math.pow(radius, 2)) continue;
                     Optional<ItemStack> maybeSupply = StreamSupport.stream(player.getInventory().spliterator(), false)
                             .filter(s -> s != null && s.getType().equals(type))
                             .findFirst();
