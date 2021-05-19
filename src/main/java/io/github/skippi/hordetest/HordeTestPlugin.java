@@ -58,6 +58,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makePaintBrush()));
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
         for (World world : Bukkit.getWorlds()) {
@@ -330,5 +331,45 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Creeper creeper = (Creeper) event.getEntity();
         if (event.getFinalDamage() < creeper.getHealth()) return;
         creeper.explode();
+    }
+
+    private static ItemStack makePaintBrush() {
+        ItemStack brush = new ItemStack(Material.FEATHER);
+        ItemMeta meta = brush.getItemMeta();
+        meta.setCustomModelData(1);
+        meta.displayName(Component.text("Paint Brush (Square)"));
+        brush.setItemMeta(meta);
+        return brush;
+    }
+
+    private static boolean isPaintBrush(@NonNull ItemStack stack) {
+        return stack.getType().equals(Material.FEATHER) && stack.getItemMeta().getCustomModelData() == 1;
+    }
+
+    @EventHandler
+    private void paintBrushPlace(BlockPlaceEvent event) {
+        @NotNull Player player = event.getPlayer();
+        @NotNull ItemStack offHand = player.getInventory().getItemInOffHand();
+        if (isPaintBrush(offHand)) {
+            int radius = offHand.getAmount();
+            @NotNull Material type = event.getBlockPlaced().getType();
+            StreamSupport.stream(player.getInventory().spliterator(), false)
+                    .filter(s -> s.getType().equals(type))
+                    .findFirst()
+                    .ifPresent(s -> s.setAmount(s.getAmount() - 1));
+            for (int i = -radius; i <= radius; ++i) {
+                for (int k = -radius; k <= radius; ++k) {
+                    if (i == 0 && k == 0) continue;
+                    Block it = event.getBlockPlaced().getRelative(i, 0, k);
+                    Optional<ItemStack> maybeSupply = StreamSupport.stream(player.getInventory().spliterator(), false)
+                            .filter(s -> s != null && s.getType().equals(type))
+                            .findFirst();
+                    if (!it.isSolid() && (player.getGameMode().equals(GameMode.CREATIVE) || maybeSupply.isPresent())) {
+                        it.setType(type);
+                        maybeSupply.ifPresent(s -> s.setAmount(s.getAmount() - 1));
+                    }
+                }
+            }
+        }
     }
 }
