@@ -13,6 +13,7 @@ import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Levelled;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -333,6 +334,32 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         creeper.explode();
     }
 
+    @EventHandler
+    private void creeperBlockDamage(EntityExplodeEvent event) {
+        if (!(event.getEntity() instanceof Creeper)) return;
+        int radius = ((Creeper) event.getEntity()).getExplosionRadius();
+        int blockDamage = radius * 2;
+        @NotNull Location loc;
+        for (int i = -radius; i <= radius; ++i) {
+            for (int j = -radius; j <= radius; ++j) {
+                for (int k = -radius; k <= radius; ++k) {
+                    loc = event.getEntity().getLocation().clone().add(i, j, k);
+                    if (loc.distance(event.getEntity().getLocation()) <= radius) {
+                        @NotNull Block block = loc.getBlock();
+                        if (block.getBlockData() instanceof Levelled) {
+                            if (((Levelled) block.getBlockData()).getLevel() != 0) {
+                                block.setType(Material.AIR);
+                                getBlockHealthManager().reset(block);
+                            }
+                        } else {
+                            getBlockHealthManager().damage(block, blockDamage);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private static ItemStack makePaintBrush() {
         ItemStack brush = new ItemStack(Material.FEATHER);
         ItemMeta meta = brush.getItemMeta();
@@ -342,7 +369,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return brush;
     }
 
-    private static boolean isPaintBrush(@NonNull ItemStack stack) {
+    private static boolean isPaintBrush(@NotNull ItemStack stack) {
         return stack.getType().equals(Material.FEATHER) && stack.getItemMeta().getCustomModelData() == 1;
     }
 
