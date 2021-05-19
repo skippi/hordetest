@@ -207,10 +207,22 @@ public class AI {
         Stream<Player> players = loc.getWorld().getPlayers()
                 .stream()
                 .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
-        Stream<LivingEntity> turrets = loc.getWorld().getLivingEntities().stream()
-                .filter(e -> e instanceof ArmorStand);
-        return Stream.concat(players.map(p -> (LivingEntity) p), turrets)
+        return Stream.concat(players.map(p -> (LivingEntity) p), HordeTestPlugin.turrets.stream())
                 .min(Comparator.comparing(p -> p.getLocation().distanceSquared(loc)));
+    }
+
+    private static Stream<Entity> getNearbyEntities(Entity entity, double radius) {
+        final int floorRad = (int) radius;
+        final int chunkRadius = floorRad < 16 ? 1 : (floorRad - (floorRad % 16)) / 16;
+        final ArrayList<Entity[]> chunkEntities = new ArrayList<>();
+        for (int i = -chunkRadius; i <= chunkRadius; ++i) {
+            for (int j = -chunkRadius; j <= chunkRadius; ++j) {
+                chunkEntities.add(entity.getLocation().clone().add(i * 16, 0, j * 16).getChunk().getEntities());
+            }
+        }
+        return chunkEntities.stream()
+                .flatMap(Arrays::stream)
+                .filter(e -> e != entity && e.getLocation().distanceSquared(entity.getLocation()) <= radius * radius);
     }
 
     public static void addAutoTargetAI(Creature creature) {
@@ -222,7 +234,7 @@ public class AI {
                     return;
                 }
                 if (creature.getTarget() == null || !creature.getTarget().isValid()) {
-                    getNearestHumanTarget(creature.getLocation()).ifPresent(creature::setTarget);
+                    creature.setTarget(getNearestHumanTarget(creature.getLocation()).orElse(null));
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
@@ -240,9 +252,7 @@ public class AI {
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
-                if (zombie.getWorld().getLivingEntities()
-                        .stream()
-                        .anyMatch(e -> e != zombie && e instanceof Zombie
+                if (getNearbyEntities(zombie, 3).anyMatch(e -> e instanceof Zombie
                             && e.getLocation().getY() <= zombie.getLocation().getY()
                             && zombie.getBoundingBox().clone().expand(0.125, 0, 0.125).overlaps(e.getBoundingBox().clone().expand(0.125, 0.0, 0.125)))) {
                     AI.climb(zombie, target.getLocation().toVector(), climbSpeed);
@@ -297,7 +307,7 @@ public class AI {
             int cooldown = 0;
 
             private boolean isTargettable(Entity e) {
-                return e instanceof Creature && e.isValid() && e.getLocation().distance(turret.getLocation()) < 75 && turret.hasLineOfSight(e);
+                return e instanceof Creature && e.getLocation().distanceSquared(turret.getLocation()) <= 75 * 75 && turret.hasLineOfSight(e);
             }
 
             @Override
@@ -307,8 +317,9 @@ public class AI {
                     return;
                 }
                 if (!isTargettable(target)) {
-                    target = turret.getWorld().getLivingEntities().stream()
+                    target = getNearbyEntities(turret, 75)
                             .filter(this::isTargettable)
+                            .map(e -> (LivingEntity) e)
                             .min(Comparator.comparing(e -> turret.getLocation().distanceSquared(e.getLocation())))
                             .orElse(null);
                 }

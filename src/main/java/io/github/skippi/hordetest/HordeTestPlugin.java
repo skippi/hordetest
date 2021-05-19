@@ -2,6 +2,7 @@ package io.github.skippi.hordetest;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import io.github.skippi.hordetest.gravity.PhysicsScheduler;
@@ -41,6 +42,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static HordeTestPlugin INSTANCE;
     private static PhysicsScheduler PHYSICS_SCHEDULER = new PhysicsScheduler();
     public static StressSystem SS = new StressSystem();
+    public static Set<LivingEntity> turrets = new HashSet<>();
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -60,7 +62,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeSquarePaintBrush()));
-        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeLinePaintBrush()));
+        Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeCirclePaintBrush()));
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
         for (World world : Bukkit.getWorlds()) {
@@ -68,6 +70,20 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (isArrowTurret(entity)) AI.addArrowTurretAI((ArmorStand) entity);
                 else if (entity instanceof IronGolem) AI.addTossAI((IronGolem) entity);
             }
+        }
+        for (World world : Bukkit.getWorlds()) {
+            for (LivingEntity entity : world.getLivingEntities()) {
+                if (entity instanceof ArmorStand) {
+                    turrets.add(entity);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    private void turretRegister(EntityAddToWorldEvent event) {
+        if (event.getEntity() instanceof ArmorStand) {
+            turrets.add((LivingEntity) event.getEntity());
         }
     }
 
@@ -303,8 +319,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    private void hordeRemove(EntityRemoveFromWorldEvent event) {
+    private void entityCleanup(EntityRemoveFromWorldEvent event) {
         hordeIds.remove(event.getEntity().getUniqueId());
+        turrets.remove(event.getEntity());
         AI.cleanupExposure(event.getEntity().getUniqueId());
     }
 
