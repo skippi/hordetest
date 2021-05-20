@@ -1,5 +1,6 @@
 package io.github.skippi.hordetest;
 
+import com.destroystokyo.paper.entity.ai.VanillaGoal;
 import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.google.common.primitives.Ints;
 import org.apache.commons.lang.math.RandomUtils;
@@ -15,7 +16,6 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,11 +43,31 @@ public class AI {
         } else if (entity instanceof Creeper) {
             AI.addPatienceAI((Creeper) entity);
         } else if (entity instanceof Spider) {
-            AI.addDigAI((Spider) entity);
+            Spider spider = (Spider) entity;
+            Bukkit.getMobGoals().removeGoal(spider, VanillaGoal.LEAP_AT_TARGET);
+            addLeapAI(spider);
+            addDigAI(spider);
         } else if (entity instanceof Phantom) {
             Phantom phantom = (Phantom) entity;
             addTorchBreakAI(phantom);
         }
+    }
+
+    private static void addLeapAI(Spider spider) {
+        new BukkitRunnable() {
+            int cooldown = 0;
+            @Override
+            public void run() {
+                if (!spider.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (cooldown-- <= 0 && spider.getTarget() != null && spider.getTarget().getLocation().distance(spider.getLocation()) < 15) {
+                    launch(spider, spider.getTarget().getLocation(), 2, -0.4);
+                    cooldown = 20 * 4;
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
     private static void addTorchBreakAI(Phantom phantom) {
@@ -232,13 +252,17 @@ public class AI {
     }
 
     private static void launch(LivingEntity entity, Location to) {
+        launch(entity, to, 1.2, -0.08);
+    }
+
+    private static void launch(LivingEntity entity, Location to, double horzSpeed, double gravity) {
+        assert gravity < 0.0;
         entity.setCollidable(false);
-        double gravity = -0.08;
-        double horzSpeed = 1.2;
+        entity.setGravity(false);
         double time = entity.getLocation().toVector().setY(0).distance(to.toVector().setY(0)) / horzSpeed;
         new BukkitRunnable() {
-            double vy = (to.getY() - entity.getLocation().getY() - 2) / time - 0.5 * gravity * time;
-            Vector horzDir = to.clone().subtract(entity.getLocation()).toVector().setY(0).normalize();
+            double vy = (to.getY() - entity.getLocation().getY()) / time - 0.5 * gravity * time;
+            final Vector horzDir = to.clone().subtract(entity.getLocation()).toVector().setY(0).normalize();
 
             @Override
             public void run() {
@@ -246,16 +270,15 @@ public class AI {
                     cancel();
                     return;
                 }
-                @NotNull Location newPos = entity.getLocation().clone().add(horzDir.clone().multiply(horzSpeed)).add(0, vy, 0);
-                @NotNull Vector dir = newPos.toVector().subtract(entity.getLocation().toVector()).normalize();
-                double innerDist = newPos.clone().distance(entity.getLocation());
-                @Nullable RayTraceResult raytrace = entity.getWorld().rayTraceBlocks(entity.getLocation(), dir, innerDist);
-                if ((raytrace != null && raytrace.getHitBlock() != null) || newPos.getY() < 0) {
-                    entity.setCollidable(true);
+                if (entity.isOnGround() && vy <= 0) {
                     cancel();
+                    entity.setVelocity(new Vector(0, 0, 0));
+                    entity.setGravity(true);
+                    entity.setCollidable(true);
                     return;
                 }
-                entity.teleport(newPos);
+                entity.setVelocity(horzDir.clone().multiply(horzSpeed).add(new Vector(0, vy, 0)));
+                entity.setFallDistance(0);
                 vy += gravity;
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
