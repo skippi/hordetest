@@ -239,7 +239,7 @@ public class AI {
                         if (cooldown <= 0 && dist <= 100) {
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             double areaDeviation = dist / 100 * 16;
-                            @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation / 2);
+                            @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
                             launch(yeeted, to);
                             pocket = Optional.empty();
                             golem.setTarget(null);
