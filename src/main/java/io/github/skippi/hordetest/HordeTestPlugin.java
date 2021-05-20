@@ -13,6 +13,7 @@ import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -37,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class HordeTestPlugin extends JavaPlugin implements Listener {
@@ -108,8 +110,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void quickCutTree(BlockBreakEvent event) {
-        if (!((event.getBlock().getType().toString().contains("_LOG") || event.getBlock().getType().toString().contains("_LEAVES"))
-                && event.getPlayer().getInventory().getItemInMainHand().getType().toString().contains("_AXE"))) {
+        if (event.getPlayer().getGameMode().equals(GameMode.CREATIVE)) return;
+        @NotNull ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
+        if (!((Blocks.isLog(event.getBlock()) || Blocks.isLeaves(event.getBlock()))
+                && tool.getType().toString().contains("_AXE"))) {
             return;
         }
         Set<Block> visited = new HashSet<>();
@@ -119,10 +123,20 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         while (i < 256 && !queue.isEmpty()) {
             Block it = queue.remove();
             if (visited.contains(it)) continue;
-            if (!(it.getType().toString().contains("_LOG") || it.getType().toString().contains("_LEAVES"))) continue;
+            if (!(Blocks.isLog(it) || Blocks.isLeaves(it))) continue;
             visited.add(it);
+            ItemMeta meta = tool.getItemMeta();
+            if (!it.equals(event.getBlock()) && Blocks.isLog(it)) {
+                ((Damageable) meta).setDamage(((Damageable) meta).getDamage() + 1);
+            }
+            if (((Damageable) meta).getDamage() >= tool.getType().getMaxDurability()) {
+                tool.setAmount(0);
+                event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+                break;
+            }
+            tool.setItemMeta(meta);
             it.breakNaturally(event.getPlayer().getInventory().getItemInMainHand());
-            Arrays.asList(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.WEST, BlockFace.SOUTH, BlockFace.EAST).stream()
+            Stream.of(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.WEST, BlockFace.SOUTH, BlockFace.EAST)
                     .map(it::getRelative)
                     .forEach(queue::add);
             ++i;
