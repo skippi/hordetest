@@ -107,6 +107,29 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void quickCutTree(BlockBreakEvent event) {
+        if (!((event.getBlock().getType().toString().contains("_LOG") || event.getBlock().getType().toString().contains("_LEAVES"))
+                && event.getPlayer().getInventory().getItemInMainHand().getType().toString().contains("_AXE"))) {
+            return;
+        }
+        Set<Block> visited = new HashSet<>();
+        Queue<Block> queue = new ArrayDeque<>();
+        queue.add(event.getBlock());
+        int i = 0;
+        while (i < 256 && !queue.isEmpty()) {
+            Block it = queue.remove();
+            if (visited.contains(it)) continue;
+            if (!(it.getType().toString().contains("_LOG") || it.getType().toString().contains("_LEAVES"))) continue;
+            visited.add(it);
+            it.breakNaturally(event.getPlayer().getInventory().getItemInMainHand());
+            Arrays.asList(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.WEST, BlockFace.SOUTH, BlockFace.EAST).stream()
+                    .map(it::getRelative)
+                    .forEach(queue::add);
+            ++i;
+        }
+    }
+
+    @EventHandler
     private void turretRegister(EntityAddToWorldEvent event) {
         if (event.getEntity() instanceof ArmorStand) {
             turrets.add((LivingEntity) event.getEntity());
