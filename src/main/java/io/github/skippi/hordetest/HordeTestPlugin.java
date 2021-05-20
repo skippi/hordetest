@@ -2,6 +2,7 @@ package io.github.skippi.hordetest;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
@@ -43,6 +44,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static PhysicsScheduler PHYSICS_SCHEDULER = new PhysicsScheduler();
     public static StressSystem SS = new StressSystem();
     public static Set<LivingEntity> turrets = new HashSet<>();
+    public static Set<Block> torches = new HashSet<>();
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -67,8 +69,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         PM = ProtocolLibrary.getProtocolManager();
         for (World world : Bukkit.getWorlds()) {
             for (LivingEntity entity : world.getLivingEntities()) {
-                if (isArrowTurret(entity)) AI.addArrowTurretAI((ArmorStand) entity);
-                else if (entity instanceof IronGolem) AI.addTossAI((IronGolem) entity);
+                AI.init(entity);
             }
         }
         for (World world : Bukkit.getWorlds()) {
@@ -78,6 +79,19 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
+    }
+
+    @EventHandler
+    private void torchPlace(BlockPlaceEvent event) {
+        Material type = event.getBlock().getType();
+        if (type.equals(Material.TORCH) || type.equals(Material.WALL_TORCH)) {
+            torches.add(event.getBlock());
+        }
+    }
+
+    @EventHandler
+    private void torchRemove(BlockDestroyEvent event) {
+        torches.remove(event.getBlock());
     }
 
     @EventHandler

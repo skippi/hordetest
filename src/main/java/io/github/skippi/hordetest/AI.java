@@ -1,14 +1,19 @@
 package io.github.skippi.hordetest;
 
+import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.google.common.primitives.Ints;
 import org.apache.commons.lang.math.RandomUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
@@ -39,7 +44,60 @@ public class AI {
             AI.addPatienceAI((Creeper) entity);
         } else if (entity instanceof Spider) {
             AI.addDigAI((Spider) entity);
+        } else if (entity instanceof Phantom) {
+            Phantom phantom = (Phantom) entity;
+            addTorchBreakAI(phantom);
         }
+    }
+
+    private static void addTorchBreakAI(Phantom phantom) {
+        new BukkitRunnable() {
+            Block target = null;
+            ArmorStand dummyTarget = null;
+            int cooldown = 0;
+
+            @Override
+            public void run() {
+                if (!phantom.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (target == null || !target.getType().equals(Material.TORCH)) {
+                    target = HordeTestPlugin.torches.stream()
+                            .min(Comparator.comparing(b -> b.getLocation().distanceSquared(phantom.getLocation())))
+                            .orElse(null);
+                    if (dummyTarget != null) {
+                        dummyTarget.remove();
+                        dummyTarget = null;
+                    }
+                }
+                if (target != null && cooldown-- <= 0) {
+                    if (dummyTarget == null) {
+                        dummyTarget = phantom.getWorld().spawn(target.getLocation().clone().add(0.5, 0, 0.5), ArmorStand.class, e -> {
+                            e.setCanMove(false);
+                            e.setVisible(false);
+                            e.setInvulnerable(false);
+                            e.setMarker(true);
+                        });
+                    }
+                    phantom.setTarget(dummyTarget);
+                    if (phantom.getLocation().distance(target.getLocation()) < 2) {
+                        @NotNull BlockData data = Bukkit.createBlockData(Material.AIR);
+                        BlockDestroyEvent event = new BlockDestroyEvent(target, data, false);
+                        Bukkit.getPluginManager().callEvent(event);
+                        if (!event.isCancelled()) {
+                            target.getWorld().dropItemNaturally(target.getLocation(), new ItemStack(Material.TORCH));
+                            target.setBlockData(data);
+                            target = null;
+                            phantom.setTarget(null);
+                            dummyTarget.remove();
+                            dummyTarget = null;
+                            cooldown = 20 * 5;
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
     public static void addStepHeightAI(Zombie zombie) {
