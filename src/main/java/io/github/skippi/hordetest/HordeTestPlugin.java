@@ -250,6 +250,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             entity.setHealth(Math.max(0, entity.getHealth() - event.getFinalDamage()));
         } else {
             entity.damage(event.getFinalDamage());
+            if (event.getDamager() instanceof Player) {
+                entity.setVelocity(entity.getLocation().clone().subtract(event.getEntity().getLocation()).toVector().normalize().multiply(0.5));
+            }
         }
         if (event.getDamager() instanceof Projectile) {
             event.getDamager().remove();
