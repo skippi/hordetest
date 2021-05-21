@@ -121,6 +121,19 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
                 }
+            } else if (STAGE == 4) {
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.CREEPER)).count() < 2) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Creeper.class)));
+                }
             } else {
                 if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
@@ -133,6 +146,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
                 if (horde.stream().filter(e -> e.getType().equals(EntityType.CREEPER)).count() < 2) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Creeper.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.IRON_GOLEM)).count() < 1) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, IronGolem.class)));
                 }
             }
         }
