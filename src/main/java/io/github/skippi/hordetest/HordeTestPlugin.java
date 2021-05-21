@@ -63,6 +63,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
+            if (Bukkit.getWorld("world").getTime() == 0) {
+                ++STAGE;
+            }
+        }, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::trySpawnHordeUnits, 0, 5);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
@@ -86,24 +91,24 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private static int STAGE = 1;
     private static Map<Player, Set<Entity>> PLAYER_HORDES = new HashMap<>();
 
     private static void trySpawnHordeUnits() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Set<Entity> horde = PLAYER_HORDES.computeIfAbsent(player, p -> new HashSet<>());
-            if (horde.size() >= 64) continue;
             @NotNull World world = player.getWorld();
             if (!(13700 <= world.getTime() && world.getTime() < 24000)) return;
-            @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
-            BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
-            int count = 0;
-            while (iter.hasNext()) {
-                @NotNull Block surfaceBlock = world.getHighestBlockAt(iter.next().getLocation()).getRelative(BlockFace.UP);
-                if (count++ < 10) continue;
-                if (surfaceBlock.getLightFromBlocks() == 0) {
-                    @NotNull Zombie zombie = world.spawn(surfaceBlock.getLocation(), Zombie.class);
-                    horde.add(zombie);
-                    return;
+            if (STAGE == 1) {
+                if (horde.size() < 16) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
+                }
+            } else {
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
                 }
             }
         }
@@ -111,6 +116,21 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static void addNoCooldownAttacks(Player player) {
         player.getAttribute(Attribute.GENERIC_ATTACK_SPEED).setBaseValue(16);
+    }
+
+    private static @NotNull Optional<Location> genHostileSpawnLocation(Player player) {
+        @NotNull World world = player.getWorld();
+        @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
+        BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
+        int count = 0;
+        while (iter.hasNext()) {
+            @NotNull Block surfaceBlock = world.getHighestBlockAt(iter.next().getLocation()).getRelative(BlockFace.UP);
+            if (count++ < 10) continue;
+            if (surfaceBlock.getLightFromBlocks() == 0) {
+                return Optional.of(surfaceBlock.getLocation());
+            }
+        }
+        return Optional.empty();
     }
 
     @EventHandler
