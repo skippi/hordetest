@@ -5,3 +5,5 @@ main: io.github.skippi.hordetest.HordeTestPlugin
 depend: [ProtocolLib]
 website: https://github.com/skippi/hordetest
 api-version: 1.16
+commands:
+  stage:

@@ -75,6 +75,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeSquarePaintBrush()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeCirclePaintBrush()));
         Bukkit.getOnlinePlayers().forEach(HordeTestPlugin::addNoCooldownAttacks);
+        getCommand("stage").setExecutor(new StageCommand());
         INSTANCE = this;
         PM = ProtocolLibrary.getProtocolManager();
         for (World world : Bukkit.getWorlds()) {
@@ -91,7 +92,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    private static int STAGE = 1;
+    public static int STAGE = 1;
     private static Map<Player, Set<Entity>> PLAYER_HORDES = new HashMap<>();
 
     private static void trySpawnHordeUnits() {
@@ -103,12 +104,22 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 if (horde.size() < 16) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
                 }
+            } else if (STAGE == 2) {
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
+                }
             } else {
                 if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
                 }
                 if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
+                }
+                if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
+                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
                 }
             }
         }
