@@ -66,6 +66,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
             if (Bukkit.getWorld("world").getTime() == 23460) {
                 ++STAGE;
+                Bukkit.getWorld("world").getLivingEntities().stream()
+                        .filter(e -> !(e instanceof Player || e instanceof ArmorStand))
+                        .forEach(Entity::remove);
             }
         }, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::trySpawnHordeUnits, 0, 5);
