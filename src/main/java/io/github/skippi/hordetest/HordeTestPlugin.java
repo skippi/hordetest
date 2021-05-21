@@ -63,7 +63,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::trySpawnZombie, 0, 5);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::trySpawnHordeUnits, 0, 5);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
@@ -81,6 +81,29 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             for (LivingEntity entity : world.getLivingEntities()) {
                 if (entity instanceof ArmorStand) {
                     turrets.add(entity);
+                }
+            }
+        }
+    }
+
+    private static Map<Player, Set<Entity>> PLAYER_HORDES = new HashMap<>();
+
+    private static void trySpawnHordeUnits() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Set<Entity> horde = PLAYER_HORDES.computeIfAbsent(player, p -> new HashSet<>());
+            if (horde.size() >= 64) continue;
+            @NotNull World world = player.getWorld();
+            if (!(13700 <= world.getTime() && world.getTime() < 24000)) return;
+            @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
+            BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
+            int count = 0;
+            while (iter.hasNext()) {
+                @NotNull Block surfaceBlock = world.getHighestBlockAt(iter.next().getLocation()).getRelative(BlockFace.UP);
+                if (count++ < 10) continue;
+                if (surfaceBlock.getLightFromBlocks() == 0) {
+                    @NotNull Zombie zombie = world.spawn(surfaceBlock.getLocation(), Zombie.class);
+                    horde.add(zombie);
+                    return;
                 }
             }
         }
@@ -362,31 +385,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
-    final Set<UUID> hordeIds = new HashSet<>();
-
-    private void trySpawnZombie() {
-        if (hordeIds.size() >= Bukkit.getOnlinePlayers().size() * 64) return;
-        for (World world : Bukkit.getWorlds()) {
-            if (!(13700 <= world.getTime() && world.getTime() < 24000)) return;
-            Player player = world.getPlayers().get(RandomUtils.nextInt(world.getPlayerCount()));
-            @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
-            BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
-            int count = 0;
-            while (iter.hasNext()) {
-                @NotNull Block surfaceBlock = world.getHighestBlockAt(iter.next().getLocation()).getRelative(BlockFace.UP);
-                if (count++ < 10) continue;
-                if (surfaceBlock.getLightFromBlocks() == 0) {
-                    @NotNull Zombie zombie = world.spawn(surfaceBlock.getLocation(), Zombie.class);
-                    hordeIds.add(zombie.getUniqueId());
-                    return;
-                }
-            }
-        }
-    }
-
     @EventHandler
     private void entityCleanup(EntityRemoveFromWorldEvent event) {
-        hordeIds.remove(event.getEntity().getUniqueId());
+        PLAYER_HORDES.values().forEach(s -> s.remove(event.getEntity()));
         turrets.remove(event.getEntity());
         AI.cleanupExposure(event.getEntity().getUniqueId());
     }
