@@ -64,7 +64,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
-            if (Bukkit.getWorld("world").getTime() == 0) {
+            if (Bukkit.getWorld("world").getTime() == 23460) {
                 ++STAGE;
             }
         }, 0, 1);
@@ -99,7 +99,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Set<Entity> horde = PLAYER_HORDES.computeIfAbsent(player, p -> new HashSet<>());
             @NotNull World world = player.getWorld();
-            if (!(13700 <= world.getTime() && world.getTime() < 24000)) return;
+            if (!(13200 <= world.getTime() && world.getTime() < 23460)) return;
             if (STAGE == 1) {
                 if (horde.size() < 16) {
                     genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
