@@ -485,7 +485,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     @EventHandler
     private void creeperBlockDamage(EntityExplodeEvent event) {
         if (!(event.getEntity() instanceof Creeper)) return;
-        int radius = ((Creeper) event.getEntity()).getExplosionRadius();
+        int radius = 3 * ((Creeper) event.getEntity()).getExplosionRadius();
         int blockDamage = radius * 2;
         @NotNull Location loc;
         for (int i = -radius; i <= radius; ++i) {
@@ -495,11 +495,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     if (loc.distance(event.getEntity().getLocation()) <= radius) {
                         @NotNull Block block = loc.getBlock();
                         if (block.getBlockData() instanceof Levelled) {
-                            if (((Levelled) block.getBlockData()).getLevel() != 0) {
+                            if (block.getType().equals(Material.WATER) || ((Levelled) block.getBlockData()).getLevel() != 0) {
                                 block.setType(Material.AIR);
                                 getBlockHealthManager().reset(block);
                             }
-                        } else {
+                        } else if (radius / 3 <= i && i <= radius / 3
+                                && radius / 3 <= j && j <= radius / 3
+                                && radius / 3 <= k && k <= radius / 3
+                        ) {
                             getBlockHealthManager().damage(block, blockDamage);
                         }
                     }
