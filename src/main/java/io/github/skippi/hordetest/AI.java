@@ -180,9 +180,9 @@ public class AI {
                     cancel();
                     return;
                 }
-                if (timer++ < 80) return;
+                if (timer++ < 80 || creeper.getTarget() == null) return;
                 double dist = creeper.getLocation().distance(lastPos);
-                if (dist < 3) {
+                if (dist < 1.5) {
                     creeper.ignite();
                 }
                 lastPos = creeper.getLocation();
