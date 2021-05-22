@@ -50,7 +50,13 @@ public class AI {
         } else if (entity instanceof Phantom) {
             Phantom phantom = (Phantom) entity;
             addTorchBreakAI(phantom);
+        } else if (isArrowTurret(entity)) {
+            addArrowTurretAI((ArmorStand) entity);
         }
+    }
+
+    public static boolean isArrowTurret(Entity entity) {
+        return entity instanceof ArmorStand && entity.getCustomName() != null && entity.getCustomName().startsWith("Arrow Turret");
     }
 
     private static void addLeapAI(Spider spider) {
@@ -313,7 +319,7 @@ public class AI {
         }
         return chunkEntities.stream()
                 .flatMap(Arrays::stream)
-                .filter(e -> e != entity && e.getLocation().distanceSquared(entity.getLocation()) <= radius * radius);
+                .filter(e -> e != entity && e.isValid() && e.getLocation().distanceSquared(entity.getLocation()) <= radius * radius);
     }
 
     public static void addAutoTargetAI(Creature creature) {
@@ -392,13 +398,13 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
-    public static void addArrowTurretAI(ArmorStand turret) {
+    private static void addArrowTurretAI(ArmorStand turret) {
         new BukkitRunnable() {
             LivingEntity target = null;
             int cooldown = 0;
 
             private boolean isTargettable(Entity e) {
-                return e instanceof Creature && e.getLocation().distanceSquared(turret.getLocation()) <= 75 * 75 && turret.hasLineOfSight(e);
+                return e instanceof Creature && e.isValid() && e.getLocation().distanceSquared(turret.getLocation()) <= 75 * 75 && turret.hasLineOfSight(e);
             }
 
             @Override

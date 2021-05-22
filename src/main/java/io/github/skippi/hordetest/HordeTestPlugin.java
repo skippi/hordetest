@@ -245,10 +245,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return item;
     }
 
-    private boolean isArrowTurret(Entity entity) {
-        return entity instanceof ArmorStand && entity.getCustomName().startsWith("Arrow Turret");
-    }
-
     private boolean isArrowTurret(ItemStack item) {
         return item.getType() == Material.BOOK && item.getItemMeta().getCustomModelData() == 1;
     }
@@ -258,7 +254,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getItem() == null || !isArrowTurret(event.getItem())) return;
         assert event.getClickedBlock() != null;
-        spawnArrowTurret(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5));
+        @NotNull Location loc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5, 0, 0.5);
+        loc.getWorld().spawn(loc, ArmorStand.class, turret -> {
+            turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.BOW));
+            turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
+            turret.setCustomName("Arrow Turret");
+            turret.setCustomNameVisible(true);
+            turret.setHealth(5);
+        });
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
             event.getItem().setAmount(event.getItem().getAmount() - 1);
         }
@@ -266,20 +269,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void tryPickupArrowTurret(PlayerInteractAtEntityEvent event) {
-        if (!isArrowTurret(event.getRightClicked())) return;
+        if (!AI.isArrowTurret(event.getRightClicked())) return;
         event.getRightClicked().remove();
         event.getPlayer().getInventory().addItem(makeArrowTurret());
         event.setCancelled(true);
-    }
-
-    private void spawnArrowTurret(Location loc) {
-        @NotNull ArmorStand turret = loc.getWorld().spawn(loc, ArmorStand.class);
-        turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.BOW));
-        turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
-        turret.setCustomName("Arrow Turret");
-        turret.setCustomNameVisible(true);
-        turret.setHealth(5);
-        AI.addArrowTurretAI(turret);
     }
 
     private static Map<UUID, Inventory> repairTurretInvs = new HashMap<>();
