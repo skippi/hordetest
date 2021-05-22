@@ -367,6 +367,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void noDamageCooldown(EntityDamageByEntityEvent event) {
+        if (event.isCancelled()) return;
         if (!(event.getEntity() instanceof LivingEntity)) return;
         LivingEntity entity = (LivingEntity) event.getEntity();
         if (entity instanceof ArmorStand) {
@@ -467,6 +468,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         if (!(event.getEntity() instanceof Creeper)) return;
         Creeper creeper = (Creeper) event.getEntity();
         if (event.getDamager() instanceof Player
+                || (event.getDamager() instanceof Creeper)
                 || (event.getDamager() instanceof Projectile
                     && (((Projectile) event.getDamager()).getShooter() instanceof ArmorStand
                         || ((Projectile) event.getDamager()).getShooter() instanceof Player))
