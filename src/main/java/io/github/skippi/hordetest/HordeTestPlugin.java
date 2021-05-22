@@ -542,7 +542,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             int radius = offHand.getAmount();
             @NotNull Material type = event.getBlockPlaced().getType();
             StreamSupport.stream(player.getInventory().spliterator(), false)
-                    .filter(s -> s.getType().equals(type))
+                    .filter(s -> s != null && s.getType().equals(type))
                     .findFirst()
                     .ifPresent(s -> s.setAmount(s.getAmount() - 1));
             for (int i = -radius; i <= radius; ++i) {
@@ -562,7 +562,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             int radius = offHand.getAmount();
             @NotNull Material type = event.getBlockPlaced().getType();
             StreamSupport.stream(player.getInventory().spliterator(), false)
-                    .filter(s -> s.getType().equals(type))
+                    .filter(s -> s != null && s.getType().equals(type))
                     .findFirst()
                     .ifPresent(s -> s.setAmount(s.getAmount() - 1));
             for (int i = -radius; i <= radius; ++i) {
