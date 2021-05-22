@@ -268,6 +268,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void placeOnTopEntity(BlockCanBuildEvent event) {
+        event.setBuildable(true);
+    }
+
+    @EventHandler
     private void tryPickupArrowTurret(PlayerInteractAtEntityEvent event) {
         if (!AI.isArrowTurret(event.getRightClicked())) return;
         event.getRightClicked().remove();
