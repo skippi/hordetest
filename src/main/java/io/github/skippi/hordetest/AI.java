@@ -62,8 +62,18 @@ public class AI {
                     cancel();
                     return;
                 }
-                if (cooldown-- <= 0 && spider.getTarget() != null && spider.getTarget().getLocation().distance(spider.getLocation()) < 15) {
-                    launch(spider, spider.getTarget().getLocation(), 2, -0.4);
+                if (cooldown-- > 0 || spider.getTarget() == null) return;
+                double dist = spider.getTarget().getLocation().distance(spider.getLocation());
+                if (4 <= dist && dist <= 15) {
+                    @NotNull Location to = spider.getTarget().getLocation().clone();
+                    double gravity = -0.4;
+                    double heightDelta = to.getY() - spider.getLocation().getY();
+                    double risingHeight = (heightDelta > 0) ? Math.max(4, heightDelta + 2) : Math.max(2, heightDelta + 4);
+                    final double vy = Math.sqrt(Math.abs(2 * gravity * risingHeight));
+                    double fallingTime = Math.sqrt(Math.abs(2 * (heightDelta - risingHeight) / gravity));
+                    double risingTime = -(vy / gravity);
+                    final Vector vh = to.toVector().setY(0).subtract(spider.getLocation().toVector().setY(0));
+                    launch(spider, vh.clone().multiply(1 / (risingTime + fallingTime)).setY(vy), gravity);
                     cooldown = 20 * 4;
                 }
             }
@@ -240,7 +250,14 @@ public class AI {
                             LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             double areaDeviation = dist / 100 * 16;
                             @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
-                            launch(yeeted, to);
+                            double heightDelta = to.getY() - yeeted.getLocation().getY();
+                            double risingHeight = (heightDelta > 0) ? Math.max(60, heightDelta + 20) : Math.max(10, heightDelta + 60);
+                            final double gravity = -0.08;
+                            final double vy = Math.sqrt(Math.abs(2 * gravity * risingHeight));
+                            double fallingTime = Math.sqrt(Math.abs(2 * (heightDelta - risingHeight) / gravity));
+                            double risingTime = -(vy / gravity);
+                            final Vector vh = to.toVector().setY(0).subtract(yeeted.getLocation().toVector().setY(0));
+                            launch(yeeted, vh.clone().multiply(1 / (risingTime + fallingTime)).setY(vy), gravity);
                             pocket = Optional.empty();
                             golem.setTarget(null);
                             cooldown = 60;
@@ -251,35 +268,28 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
-    private static void launch(LivingEntity entity, Location to) {
-        launch(entity, to, 1.2, -0.08);
-    }
-
-    private static void launch(LivingEntity entity, Location to, double horzSpeed, double gravity) {
+    private static void launch(LivingEntity entity, Vector velocity, double gravity) {
         assert gravity < 0.0;
         entity.setCollidable(false);
         entity.setGravity(false);
-        double time = entity.getLocation().toVector().setY(0).distance(to.toVector().setY(0)) / horzSpeed;
+        @NotNull Vector newVelocity = velocity.clone();
         new BukkitRunnable() {
-            double vy = (to.getY() - entity.getLocation().getY()) / time - 0.5 * gravity * time;
-            final Vector horzDir = to.clone().subtract(entity.getLocation()).toVector().setY(0).normalize();
-
             @Override
             public void run() {
                 if (!entity.isValid()) {
                     cancel();
                     return;
                 }
-                if (entity.isOnGround() && vy <= 0) {
+                if (entity.isOnGround() && newVelocity.getY() <= 0) {
                     cancel();
                     entity.setVelocity(new Vector(0, 0, 0));
                     entity.setGravity(true);
                     entity.setCollidable(true);
                     return;
                 }
-                entity.setVelocity(horzDir.clone().multiply(horzSpeed).add(new Vector(0, vy, 0)));
+                entity.setVelocity(newVelocity);
                 entity.setFallDistance(0);
-                vy += gravity;
+                newVelocity.setY(newVelocity.getY() + gravity);
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
