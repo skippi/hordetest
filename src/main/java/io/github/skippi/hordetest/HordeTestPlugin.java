@@ -13,6 +13,8 @@ import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
+import org.bukkit.event.Event;
+import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
@@ -153,6 +155,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static void addNoCooldownAttacks(Player player) {
         player.getAttribute(Attribute.GENERIC_ATTACK_SPEED).setBaseValue(16);
+    }
+
+    @EventHandler
+    private void noSleep(PlayerBedEnterEvent event) {
+        event.setUseBed(Event.Result.DENY);
     }
 
     private static @NotNull Optional<Location> genHostileSpawnLocation(Player player) {
