@@ -71,7 +71,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                         .forEach(Entity::remove);
             }
         }, 0, 1);
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::trySpawnHordeUnits, 0, 5);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::tickHordeSpawns, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
@@ -96,63 +96,51 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     public static int STAGE = 1;
-    private static Map<Player, Set<Entity>> PLAYER_HORDES = new HashMap<>();
+    private static final Set<Entity> HORDE_ENTITIES = new HashSet<>();
 
-    private static void trySpawnHordeUnits() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            Set<Entity> horde = PLAYER_HORDES.computeIfAbsent(player, p -> new HashSet<>());
+    private static void tryHordeSpawn(Player player, EntityType type, int perPlayerLimit, double chance) {
+        assert 0.0 <= chance && chance <= 1.0;
+        if (RandomUtils.nextFloat() >= chance) return;
+        final long unitLimit = Math.round(perPlayerLimit * Bukkit.getOnlinePlayers().size());
+        final long unitCount = HORDE_ENTITIES.stream().filter(e -> e.getType().equals(type)).count();
+        if (unitCount < unitLimit) {
+            genHostileSpawnLocation(player).ifPresent(loc -> HORDE_ENTITIES.add(player.getWorld().spawnEntity(loc, type)));
+        }
+    }
+
+    private static void tickHordeSpawns() {
+        List<Player> shuffledPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
+        Collections.shuffle(shuffledPlayers);
+        for (Player player : shuffledPlayers) {
             @NotNull World world = player.getWorld();
             if (!(13200 <= world.getTime() && world.getTime() < 23460)) return;
             if (STAGE == 1) {
-                if (horde.size() < 16) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
-                }
+                tryHordeSpawn(player, EntityType.ZOMBIE, 16, 1.0 / 40);
             } else if (STAGE == 2) {
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
-                }
+                tryHordeSpawn(player, EntityType.ZOMBIE, 17, 1.0 / 40);
+                tryHordeSpawn(player, EntityType.SPIDER, 3, 1.0 / 60);
             } else if (STAGE == 3) {
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
-                }
+                tryHordeSpawn(player, EntityType.ZOMBIE, 18, 1.0 / 40);
+                tryHordeSpawn(player, EntityType.SPIDER, 3, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.SKELETON, 3, 1.0 / 60);
             } else if (STAGE == 4) {
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.CREEPER)).count() < 2) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Creeper.class)));
-                }
+                tryHordeSpawn(player, EntityType.ZOMBIE, 19, 1.0 / 40);
+                tryHordeSpawn(player, EntityType.SKELETON, 3, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.SPIDER, 3, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.CREEPER, 2, 1.0 / 80);
+            } else if (STAGE == 5) {
+                tryHordeSpawn(player, EntityType.ZOMBIE, 20, 1.0 / 40);
+                tryHordeSpawn(player, EntityType.SKELETON, 4, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.SPIDER, 4, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.CREEPER, 2, 1.0 / 80);
+                tryHordeSpawn(player, EntityType.IRON_GOLEM, 1, 1.0 / 160);
             } else {
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.ZOMBIE)).count() < 16) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Zombie.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SKELETON)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Skeleton.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.SPIDER)).count() < 6) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Spider.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.CREEPER)).count() < 2) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, Creeper.class)));
-                }
-                if (horde.stream().filter(e -> e.getType().equals(EntityType.IRON_GOLEM)).count() < 1) {
-                    genHostileSpawnLocation(player).ifPresent(loc -> horde.add(world.spawn(loc, IronGolem.class)));
-                }
+                tryHordeSpawn(player, EntityType.ZOMBIE, 20, 1.0 / 40);
+                tryHordeSpawn(player, EntityType.SKELETON, 4, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.SPIDER, 4, 1.0 / 60);
+                tryHordeSpawn(player, EntityType.CREEPER, 2, 1.0 / 80);
+                tryHordeSpawn(player, EntityType.IRON_GOLEM, 1, 1.0 / 160);
+                tryHordeSpawn(player, EntityType.PHANTOM, 2, 1.0 / 160);
             }
         }
     }
@@ -370,17 +358,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         LivingEntity entity = (LivingEntity) event.getEntity();
         if (entity instanceof ArmorStand) {
             entity.setHealth(Math.max(0, entity.getHealth() - event.getFinalDamage()));
-        } else {
-            entity.damage(event.getFinalDamage());
-            if (event.getDamager() instanceof Player) {
-                entity.setVelocity(entity.getLocation().clone().subtract(event.getEntity().getLocation()).toVector().normalize().multiply(0.5));
-            }
         }
         if (event.getDamager() instanceof Projectile) {
             event.getDamager().remove();
         }
-        entity.setNoDamageTicks(0);
-        event.setCancelled(true);
     }
 
     @EventHandler
@@ -449,7 +430,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void entityCleanup(EntityRemoveFromWorldEvent event) {
-        PLAYER_HORDES.values().forEach(s -> s.remove(event.getEntity()));
+        HORDE_ENTITIES.remove(event.getEntity());
         turrets.remove(event.getEntity());
         AI.cleanupExposure(event.getEntity().getUniqueId());
     }

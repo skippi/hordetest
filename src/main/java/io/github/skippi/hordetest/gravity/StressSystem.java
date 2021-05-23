@@ -67,7 +67,7 @@ public class StressSystem {
 
     private boolean isPermanentlyStable(Block block) {
         Material mat = block.getType();
-        return mat == Material.BEDROCK || block.isLiquid();
+        return mat == Material.BEDROCK || block.isLiquid() || Blocks.isLeaves(block);
     }
 
     private boolean isBaseable(Block block) {

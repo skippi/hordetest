@@ -36,7 +36,6 @@ public class AI {
             zombie.setAdult();
             AI.addClimbAI(zombie);
             AI.addDigAI(zombie);
-            AI.addStepHeightAI(zombie);
             AI.addSpeedAI(zombie);
         } else if (entity instanceof Skeleton) {
             AI.addAttackAI((Skeleton) entity);
@@ -52,6 +51,9 @@ public class AI {
             addTorchBreakAI(phantom);
         } else if (isArrowTurret(entity)) {
             addArrowTurretAI((ArmorStand) entity);
+        }
+        if (entity instanceof Creature && !(entity instanceof Creeper)) {
+            addAntiStuckAI((Creature) entity);
         }
     }
 
@@ -71,7 +73,8 @@ public class AI {
                 if (cooldown-- > 0 || spider.getTarget() == null) return;
                 double dist = spider.getTarget().getLocation().distance(spider.getLocation());
                 if (4 <= dist && dist <= 15) {
-                    @NotNull Location to = spider.getTarget().getLocation().clone();
+                    final double areaDeviation = 4.0;
+                    @NotNull Location to = spider.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
                     double gravity = -0.4;
                     double heightDelta = to.getY() - spider.getLocation().getY();
                     double risingHeight = (heightDelta > 0) ? Math.max(4, heightDelta + 2) : Math.max(2, heightDelta + 4);
@@ -136,24 +139,6 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
-    public static void addStepHeightAI(Zombie zombie) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!zombie.isValid()) {
-                    cancel();
-                    return;
-                }
-                if (zombie.getTarget() == null) return;
-                @NotNull Vector dir = zombie.getTarget().getLocation().subtract(zombie.getLocation()).toVector().normalize();
-                @NotNull Block targetFeetBlock = zombie.getLocation().clone().add(dir).getBlock();
-                if (targetFeetBlock.isSolid() && !targetFeetBlock.getRelative(BlockFace.UP).isSolid()) {
-                    zombie.teleport(targetFeetBlock.getRelative(BlockFace.UP).getLocation());
-                }
-            }
-        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
-    }
-
     public static void addDigAI(Spider spider) {
         new BukkitRunnable() {
             int cooldown = 0;
@@ -192,6 +177,28 @@ public class AI {
                     creeper.ignite();
                 }
                 lastPos = creeper.getLocation();
+                timer = 0;
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
+    private static void addAntiStuckAI(Creature creature) {
+        new BukkitRunnable() {
+            int timer = 0;
+            Location lastPos = creature.getLocation();
+            @Override
+            public void run() {
+                if (!creature.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (timer++ < 80) return;
+                if (!creature.isOnGround()) return;
+                double dist = creature.getLocation().toVector().distance(lastPos.toVector());
+                if (dist < 1.5) {
+                    creature.remove();
+                }
+                lastPos = creature.getLocation();
                 timer = 0;
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
@@ -253,7 +260,7 @@ public class AI {
                         double dist = golem.getTarget().getLocation().distance(golem.getLocation());
                         golem.setAI(dist > 100);
                         if (cooldown <= 0 && dist <= 100) {
-                            LivingEntity yeeted = golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
+                            Creature yeeted = (Creature) golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             double areaDeviation = dist / 100 * 16;
                             @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
                             double heightDelta = to.getY() - yeeted.getLocation().getY();
@@ -274,7 +281,7 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
-    private static void launch(LivingEntity entity, Vector velocity, double gravity) {
+    private static void launch(Creature entity, Vector velocity, double gravity) {
         assert gravity < 0.0;
         entity.setCollidable(false);
         entity.setGravity(false);
@@ -296,6 +303,7 @@ public class AI {
                 entity.setVelocity(newVelocity);
                 entity.setFallDistance(0);
                 newVelocity.setY(newVelocity.getY() + gravity);
+                entity.setTarget(null);
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
@@ -345,7 +353,7 @@ public class AI {
                     cancel();
                     return;
                 }
-                double climbSpeed = 0.3 + 0.65 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
+                double climbSpeed = 0.45 + 0.5 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
@@ -381,18 +389,18 @@ public class AI {
                     return;
                 }
                 boolean isInLight = zombie.getLocation().getBlock().getRelative(BlockFace.UP).getLightFromBlocks() > 5;
-                setExposureTime(zombie, Ints.constrainToRange(getExposureTime(zombie) + (isInLight ? 1 : -1), -80, 20));
+                setExposureTime(zombie, Ints.constrainToRange(getExposureTime(zombie) + (isInLight ? 1 : -1), -20, 20));
                 AttributeInstance speedAttr = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
                 assert speedAttr != null;
                 if (getExposureTime(zombie) <= 0) {
-                    speedAttr.setBaseValue(0.75);
+                    speedAttr.setBaseValue(0.7);
                 } else {
-                    speedAttr.setBaseValue(0.75 - 0.0175 * getExposureTime(zombie));
+                    speedAttr.setBaseValue(0.7 - 0.016 * getExposureTime(zombie));
                 }
                 if ((zombie.isInWater() || zombie.isInLava()) && zombie.getTarget() != null && zombie.getTarget().getLocation().distance(zombie.getLocation()) > 1.5) {
                     @NotNull Vector dir = zombie.getTarget().getLocation().clone().subtract(zombie.getLocation()).toVector().normalize();
-                    @NotNull Vector horz = dir.clone().setY(0).multiply(speedAttr.getValue() * 0.7);
-                    zombie.setVelocity(horz.clone().setY(dir.getY() * 0.3));
+                    @NotNull Vector horz = dir.clone().setY(0).multiply(speedAttr.getValue() * 0.6);
+                    zombie.setVelocity(horz.clone().setY(dir.getY() * 0.25));
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
