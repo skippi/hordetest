@@ -26,11 +26,15 @@ public class BlockHealthManager {
         BlockPreDamageEvent event = new BlockPreDamageEvent(block, amount);
         Bukkit.getPluginManager().callEvent(event);
         setHealth(block, getHealth(block) - event.getDamage());
-        animateBlockBreak(block, (getMaxHealth(block) - getHealth(block)) / getMaxHealth(block));
+        render(block);
     }
 
     public void reset(Block block) {
         setHealth(block, getMaxHealth(block));
+        render(block);
+    }
+
+    public void render(Block block) {
         animateBlockBreak(block, (getMaxHealth(block) - getHealth(block)) / getMaxHealth(block));
     }
 

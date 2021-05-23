@@ -417,6 +417,26 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    private void doRepair(PlayerInteractEvent event) {
+        if (!event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) return;
+        if (!(event.getItem() != null && event.getClickedBlock().isValidTool(event.getItem()))) return;
+        if (getBlockHealthManager().getHealth(event.getClickedBlock()) >= getBlockHealthManager().getMaxHealth(event.getClickedBlock())) return;
+        Optional<ItemStack> maybeSupply = StreamSupport.stream(event.getPlayer().getInventory().spliterator(), false)
+                .filter(i -> i != null && i.getType().equals(event.getClickedBlock().getType()))
+                .findFirst();
+        if (!maybeSupply.isPresent()) return;
+        getBlockHealthManager().reset(event.getClickedBlock());
+        maybeSupply.get().setAmount(maybeSupply.get().getAmount() - 1);
+        event.getPlayer().swingMainHand();
+        event.getClickedBlock().getWorld().playSound(event.getClickedBlock().getLocation(), event.getClickedBlock().getSoundGroup().getPlaceSound(), 0.5f, 0.5f);
+    }
+
+    @EventHandler
+    private void renderBlockBreaking(BlockDamageEvent event) {
+        getBlockHealthManager().render(event.getBlock());
+    }
+
+    @EventHandler
     private void creeperNoFriendlyFire(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Creeper)) return;
         if (!(event.getEntity() instanceof Monster)) return;
