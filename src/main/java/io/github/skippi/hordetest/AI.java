@@ -192,8 +192,8 @@ public class AI {
                     cancel();
                     return;
                 }
-                if (timer++ < 80) return;
                 if (!creature.isOnGround()) return;
+                if (timer++ < 80) return;
                 double dist = creature.getLocation().toVector().distance(lastPos.toVector());
                 if (dist < 1.5) {
                     creature.remove();
