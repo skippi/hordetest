@@ -33,6 +33,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.BlockIterator;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
@@ -257,6 +258,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void placeOnTopEntity(BlockCanBuildEvent event) {
+        if (event.getPlayer().getBoundingBox().overlaps(BoundingBox.of(event.getBlock()))) return;
         event.setBuildable(true);
     }
 
