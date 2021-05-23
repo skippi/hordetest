@@ -94,6 +94,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
+        for (World world : Bukkit.getWorlds()) {
+            world.getWorldBorder().setCenter(0, 0);
+            world.getWorldBorder().setSize(500, 0);
+            world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
+        }
     }
 
     public static int STAGE = 1;
