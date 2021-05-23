@@ -192,6 +192,7 @@ public class AI {
                     cancel();
                     return;
                 }
+                if (creature.getTarget() == null) return;
                 if (!creature.isOnGround()) return;
                 if (timer++ < 80) return;
                 double dist = creature.getLocation().toVector().distance(lastPos.toVector());

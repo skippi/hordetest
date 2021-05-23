@@ -38,6 +38,7 @@ import org.bukkit.util.BlockIterator;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public static StressSystem SS = new StressSystem();
     public static Set<LivingEntity> turrets = new HashSet<>();
     public static Set<Block> torches = new HashSet<>();
+    private static int BORDER_SIZE = 400;
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -67,11 +69,27 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
-            if (Bukkit.getWorld("world").getTime() == 23460) {
+            @Nullable World world = Bukkit.getWorld("world");
+            if (world.getTime() == 23460) {
                 ++STAGE;
-                Bukkit.getWorld("world").getLivingEntities().stream()
+                world.getLivingEntities().stream()
                         .filter(e -> !(e instanceof Player || e instanceof ArmorStand))
                         .forEach(Entity::remove);
+                for (int i = 0; i < world.getPlayerCount() * 3; ++i) {
+                    int x = RandomUtils.nextInt(16);
+                    int z = RandomUtils.nextInt(16);
+                    int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
+                    @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
+                    @NotNull Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
+                            .getRelative(BlockFace.UP)
+                            .getLocation();
+                    List<EntityType> farmAnimalTypes = Arrays.asList(EntityType.PIG, EntityType.COW, EntityType.SHEEP, EntityType.CHICKEN);
+                    EntityType type = farmAnimalTypes.get(RandomUtils.nextInt(farmAnimalTypes.size()));
+                    for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
+                        world.spawnEntity(spawnLoc, type);
+                    }
+                    world.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d)", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ())));
+                }
             }
         }, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::tickHordeSpawns, 0, 1);
@@ -98,9 +116,19 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
         for (World world : Bukkit.getWorlds()) {
             world.getWorldBorder().setCenter(0, 0);
-            world.getWorldBorder().setSize(500, 0);
+            world.getWorldBorder().setSize(BORDER_SIZE, 0);
             world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
+            for (int x = -getChunkRadius(world); x <= getChunkRadius(world); ++x) {
+                for (int z = -getChunkRadius(world); z <= getChunkRadius(world); ++z) {
+                    world.setChunkForceLoaded(x, z, true);
+                }
+            }
         }
+    }
+
+    private static int getChunkRadius(World world) {
+        int borderRadius = (int) world.getWorldBorder().getSize() / 2;
+        return (borderRadius - (borderRadius % 16)) / 16;
     }
 
     public static int STAGE = 1;
