@@ -54,6 +54,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     public static Set<LivingEntity> turrets = new HashSet<>();
     public static Set<Block> torches = new HashSet<>();
     private static int BORDER_SIZE = 400;
+    private static Map<Player, Location> PLAYER_DEATH_LOCATIONS = new HashMap<>();
 
     public static ProtocolManager getProtocolManager() {
         return PM;
@@ -72,6 +73,16 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             @Nullable World world = Bukkit.getWorld("world");
             if (world.getTime() == 23460) {
                 ++STAGE;
+                world.getPlayers().stream()
+                        .filter(p -> p.getGameMode().equals(GameMode.SPECTATOR))
+                        .forEach(p -> {
+                            Location spawnLoc = world.getHighestBlockAt(PLAYER_DEATH_LOCATIONS.getOrDefault(p, world.getSpawnLocation()))
+                                    .getLocation().clone()
+                                    .add(0, 1, 0);
+                            p.teleport(spawnLoc);
+                            p.setGameMode(GameMode.SURVIVAL);
+                            PLAYER_DEATH_LOCATIONS.remove(p);
+                        });
                 world.getLivingEntities().stream()
                         .filter(e -> !(e instanceof Player || e instanceof ArmorStand))
                         .forEach(Entity::remove);
@@ -144,12 +155,32 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler
+    private void deathSpectator(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        if (event.getFinalDamage() < player.getHealth()) return;
+        if (!isHordeTime(player.getWorld().getTime())) return;
+        StreamSupport.stream(player.getInventory().spliterator(), false)
+                .filter(Objects::nonNull)
+                .forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
+        player.getInventory().clear();
+        player.setGameMode(GameMode.SPECTATOR);
+        player.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * 0.3);
+        PLAYER_DEATH_LOCATIONS.put(player, player.getLocation());
+        event.setCancelled(true);
+    }
+
+    private static boolean isHordeTime(long time) {
+        return 13200 <= time && time < 23460;
+    }
+
     private static void tickHordeSpawns() {
         List<Player> shuffledPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
         Collections.shuffle(shuffledPlayers);
         for (Player player : shuffledPlayers) {
             @NotNull World world = player.getWorld();
-            if (!(13200 <= world.getTime() && world.getTime() < 23460)) return;
+            if (!isHordeTime(world.getTime())) return;
             if (STAGE == 1) {
                 tryHordeSpawn(player, EntityType.ZOMBIE, 16, 1.0 / 40);
             } else if (STAGE == 2) {
