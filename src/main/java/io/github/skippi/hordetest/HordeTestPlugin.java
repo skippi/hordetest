@@ -70,6 +70,24 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static Map<World, Double> WORLD_HEIGHT_AVERAGES = new HashMap<>();
 
+    private static void spawnMorningHerds(World world) {
+        List<EntityType> animalTypes = Arrays.asList(EntityType.PIG, EntityType.COW, EntityType.SHEEP, EntityType.CHICKEN);
+        for (int i = 0; i < world.getPlayers().stream().filter(p -> p.getGameMode().equals(GameMode.SURVIVAL)).count() * 3; ++i) {
+            int x = RandomUtils.nextInt(16);
+            int z = RandomUtils.nextInt(16);
+            int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
+            @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
+            Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
+                    .getRelative(BlockFace.UP)
+                    .getLocation();
+            EntityType type = animalTypes.get(RandomUtils.nextInt(animalTypes.size()));
+            for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
+                world.spawnEntity(spawnLoc, type);
+            }
+            world.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d)", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ())));
+        }
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -90,21 +108,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 world.getLivingEntities().stream()
                         .filter(e -> !(e instanceof Player || e instanceof ArmorStand))
                         .forEach(Entity::remove);
-                for (int i = 0; i < world.getPlayerCount() * 3; ++i) {
-                    int x = RandomUtils.nextInt(16);
-                    int z = RandomUtils.nextInt(16);
-                    int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
-                    @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
-                    @NotNull Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
-                            .getRelative(BlockFace.UP)
-                            .getLocation();
-                    List<EntityType> farmAnimalTypes = Arrays.asList(EntityType.PIG, EntityType.COW, EntityType.SHEEP, EntityType.CHICKEN);
-                    EntityType type = farmAnimalTypes.get(RandomUtils.nextInt(farmAnimalTypes.size()));
-                    for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
-                        world.spawnEntity(spawnLoc, type);
-                    }
-                    world.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d)", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ())));
-                }
+                spawnMorningHerds(world);
             }
         }, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> Bukkit.getWorlds().forEach(w -> w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, hasSurvivors(w))), 0, 1);
@@ -148,6 +152,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                     }
                 }
             }
+            spawnMorningHerds(world);
         }
         makeFlaxRecipes().forEach(getServer()::addRecipe);
         getServer().addRecipe(new StonecuttingRecipe(new NamespacedKey(this, "flint_cobblestone"), new ItemStack(Material.FLINT, 1), Material.COBBLESTONE));
