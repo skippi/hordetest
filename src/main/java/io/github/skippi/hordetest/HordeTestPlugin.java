@@ -66,6 +66,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     public static HordeTestPlugin getInstance() { return INSTANCE; }
 
+    private static boolean hasSurvivors(World world) {
+        return world.getPlayers().stream().anyMatch(p -> p.getGameMode().equals(GameMode.SURVIVAL));
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -103,6 +107,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }, 0, 1);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> Bukkit.getWorlds().forEach(w -> w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, hasSurvivors(w))), 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::tickHordeSpawns, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
