@@ -68,6 +68,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         return world.getPlayers().stream().anyMatch(p -> p.getGameMode().equals(GameMode.SURVIVAL));
     }
 
+    private static Map<World, Double> WORLD_HEIGHT_AVERAGES = new HashMap<>();
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -135,7 +137,15 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
             for (int x = -getChunkRadius(world); x <= getChunkRadius(world); ++x) {
                 for (int z = -getChunkRadius(world); z <= getChunkRadius(world); ++z) {
-                    world.setChunkForceLoaded(x, z, true);
+                    @NotNull Chunk chunk = world.getChunkAt(x, z);
+                    chunk.setForceLoaded(true);
+                    for (int i = 0; i < 16; ++i) {
+                        for (int j = 0; j < 16; ++j) {
+                            double newAvg = WORLD_HEIGHT_AVERAGES.getOrDefault(world, 0.0);
+                            newAvg += world.getHighestBlockYAt(chunk.getBlock(i, 255, j).getLocation(), HeightMap.MOTION_BLOCKING_NO_LEAVES) / (256.0 * (Math.pow(getChunkRadius(world) * 2 + 1, 2)));
+                            WORLD_HEIGHT_AVERAGES.put(world, newAvg);
+                        }
+                    }
                 }
             }
         }
@@ -173,7 +183,15 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static void tryHordeSpawn(Player player, EntityType type, int perPlayerLimit, double chance) {
         assert 0.0 <= chance && chance <= 1.0;
         if (RandomUtils.nextFloat() >= chance) return;
-        final long unitLimit = Math.round(perPlayerLimit * Bukkit.getOnlinePlayers().size());
+        final long unitLimit = (long) (Bukkit.getOnlinePlayers().stream()
+                .mapToDouble(p -> {
+                    double multiplier = 1.0;
+                    if (p.getGameMode().equals(GameMode.SURVIVAL)) {
+                        multiplier += Math.min(2, Math.abs(WORLD_HEIGHT_AVERAGES.get(p.getWorld()) - p.getLocation().getY()) / 50.0);
+                    }
+                    return multiplier;
+                })
+                .sum() * perPlayerLimit * Bukkit.getOnlinePlayers().size());
         final long unitCount = HORDE_ENTITIES.stream().filter(e -> e.getType().equals(type)).count();
         if (unitCount < unitLimit) {
             genHostileSpawnLocation(player).ifPresent(loc -> HORDE_ENTITIES.add(player.getWorld().spawnEntity(loc, type)));
