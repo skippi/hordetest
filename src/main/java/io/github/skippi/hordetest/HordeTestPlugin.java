@@ -15,6 +15,7 @@ import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
@@ -29,9 +30,6 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.BlockIterator;
@@ -141,6 +139,26 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
+        makeFlaxRecipes().forEach(getServer()::addRecipe);
+    }
+
+    private static List<ShapedRecipe> makeFlaxRecipes() {
+        List<ShapedRecipe> recipes = new ArrayList<>();
+        List<Material> flowers = Arrays.asList(Material.DANDELION, Material.POPPY, Material.BLUE_ORCHID, Material.ALLIUM, Material.AZURE_BLUET, Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP, Material.PINK_TULIP, Material.OXEYE_DAISY, Material.CORNFLOWER, Material.LILY_OF_THE_VALLEY, Material.WITHER_ROSE, Material.SUNFLOWER, Material.LILAC, Material.ROSE_BUSH, Material.PEONY);
+        for (Material flower1 : flowers) {
+            for (Material flower2 : flowers) {
+                for (Material flower3 : flowers) {
+                    NamespacedKey key = new NamespacedKey(HordeTestPlugin.getInstance(), String.format("flax_%s_%s_%s", flower1.toString().toLowerCase(Locale.ROOT), flower2.toString().toLowerCase(Locale.ROOT), flower3.toString().toLowerCase(Locale.ROOT)));
+                    ShapedRecipe recipe = new ShapedRecipe(key, new ItemStack(Material.STRING, 1))
+                            .shape("ABC")
+                            .setIngredient('A', flower1)
+                            .setIngredient('B', flower2)
+                            .setIngredient('C', flower3);
+                    recipes.add(recipe);
+                }
+            }
+        }
+        return recipes;
     }
 
     private static int getChunkRadius(World world) {
