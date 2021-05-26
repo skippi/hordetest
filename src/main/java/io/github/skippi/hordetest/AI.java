@@ -254,7 +254,7 @@ public class AI {
                         golem.setTarget(null);
                     }
                 } else {
-                    if (golem.getTarget() == null || !golem.getTarget().isValid()) {
+                    if (golem.getTarget() == null || !isHumanTargetable(golem.getTarget())) {
                         getNearestHumanTarget(golem.getLocation()).ifPresent(golem::setTarget);
                     }
                     if (golem.getTarget() != null) {
@@ -309,10 +309,16 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
+    private static boolean isHumanTargetable(LivingEntity entity) {
+        return entity.isValid()
+                && ((entity instanceof Player && ((Player) entity).getGameMode().equals(GameMode.SURVIVAL))
+                    || (entity instanceof ArmorStand));
+    }
+
     private static Optional<LivingEntity> getNearestHumanTarget(Location loc) {
         Stream<Player> players = loc.getWorld().getPlayers()
                 .stream()
-                .filter(p -> !p.getGameMode().equals(GameMode.CREATIVE));
+                .filter(AI::isHumanTargetable);
         return Stream.concat(players.map(p -> (LivingEntity) p), HordeTestPlugin.turrets.stream())
                 .min(Comparator.comparing(p -> p.getLocation().distanceSquared(loc)));
     }
@@ -339,7 +345,7 @@ public class AI {
                     cancel();
                     return;
                 }
-                if (creature.getTarget() == null || !creature.getTarget().isValid()) {
+                if (creature.getTarget() == null || !isHumanTargetable(creature.getTarget())) {
                     creature.setTarget(getNearestHumanTarget(creature.getLocation()).orElse(null));
                 }
             }
