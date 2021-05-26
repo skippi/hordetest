@@ -140,6 +140,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             }
         }
         makeFlaxRecipes().forEach(getServer()::addRecipe);
+        getServer().addRecipe(new StonecuttingRecipe(new NamespacedKey(this, "flint_cobblestone"), new ItemStack(Material.FLINT, 1), Material.COBBLESTONE));
     }
 
     private static List<ShapedRecipe> makeFlaxRecipes() {
