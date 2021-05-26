@@ -207,9 +207,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
 
     private static void tickHordeSpawns() {
-        List<Player> shuffledPlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
-        Collections.shuffle(shuffledPlayers);
-        for (Player player : shuffledPlayers) {
+        List<Player> survivors = Bukkit.getOnlinePlayers().stream()
+                .filter(p -> !p.getGameMode().equals(GameMode.SPECTATOR))
+                .collect(Collectors.toList());
+        for (int i = 0; i < survivors.size(); ++i) {
+            Player player = survivors.get(RandomUtils.nextInt(survivors.size()));
             @NotNull World world = player.getWorld();
             if (!isHordeTime(world.getTime())) return;
             if (STAGE == 1) {
