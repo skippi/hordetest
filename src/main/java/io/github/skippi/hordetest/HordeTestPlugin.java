@@ -84,7 +84,9 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
                 world.spawnEntity(spawnLoc, type);
             }
-            world.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d)", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ())));
+            world.getPlayers().stream()
+                    .filter(p -> p.getGameMode().equals(GameMode.SURVIVAL))
+                    .forEach(p -> p.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d) [%dm]", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), Math.round(spawnLoc.distance(p.getLocation()))))));
         }
     }
 
