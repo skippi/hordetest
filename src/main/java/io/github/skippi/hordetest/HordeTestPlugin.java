@@ -131,6 +131,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             }
         }
         for (World world : Bukkit.getWorlds()) {
+            world.setGameRule(GameRule.RANDOM_TICK_SPEED, 24);
             world.getWorldBorder().setCenter(0, 0);
             world.getWorldBorder().setSize(BORDER_SIZE, 0);
             world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
