@@ -166,14 +166,20 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Player player = (Player) event.getEntity();
         if (event.getFinalDamage() < player.getHealth()) return;
         if (!isHordeTime(player.getWorld().getTime())) return;
+        event.setCancelled(true);
+        player.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * (player.getBedSpawnLocation() != null ? 1 : 0.3));
+        if (player.getBedSpawnLocation() != null) {
+            player.teleport(player.getBedSpawnLocation());
+            player.getPotentialBedLocation().getBlock().setType(Material.AIR);
+            player.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+            return;
+        }
         StreamSupport.stream(player.getInventory().spliterator(), false)
                 .filter(Objects::nonNull)
                 .forEach(i -> player.getWorld().dropItemNaturally(player.getLocation(), i));
         player.getInventory().clear();
         player.setGameMode(GameMode.SPECTATOR);
-        player.setHealth(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() * 0.3);
         PLAYER_DEATH_LOCATIONS.put(player, player.getLocation());
-        event.setCancelled(true);
     }
 
     private static boolean isHordeTime(long time) {
