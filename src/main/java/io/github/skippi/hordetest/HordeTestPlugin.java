@@ -72,23 +72,31 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static Map<World, Double> WORLD_HEIGHT_AVERAGES = new HashMap<>();
 
+    private static void spawnHerd(World world, EntityType type) {
+        int x = RandomUtils.nextInt(16);
+        int z = RandomUtils.nextInt(16);
+        int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
+        @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
+        Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
+                .getRelative(BlockFace.UP)
+                .getLocation();
+        for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
+            world.spawnEntity(spawnLoc, type);
+        }
+        world.getPlayers().stream()
+                .filter(p -> p.getGameMode().equals(GameMode.SURVIVAL))
+                .forEach(p -> p.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d) [%dm]", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), Math.round(spawnLoc.distance(p.getLocation()))))));
+    }
+
     private static void spawnMorningHerds(World world) {
         List<EntityType> animalTypes = Arrays.asList(EntityType.PIG, EntityType.COW, EntityType.SHEEP, EntityType.CHICKEN);
-        for (int i = 0; i < world.getPlayers().stream().filter(p -> p.getGameMode().equals(GameMode.SURVIVAL)).count() * 3; ++i) {
-            int x = RandomUtils.nextInt(16);
-            int z = RandomUtils.nextInt(16);
-            int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
-            @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
-            Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
-                    .getRelative(BlockFace.UP)
-                    .getLocation();
+        long survivorCount = world.getPlayers().stream().filter(p -> p.getGameMode().equals(GameMode.SURVIVAL)).count();
+        for (int i = 0; i < survivorCount; ++i) {
+            spawnHerd(world, EntityType.CHICKEN);
+        }
+        for (int i = 0; i < survivorCount * 2; ++i) {
             EntityType type = animalTypes.get(RandomUtils.nextInt(animalTypes.size()));
-            for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
-                world.spawnEntity(spawnLoc, type);
-            }
-            world.getPlayers().stream()
-                    .filter(p -> p.getGameMode().equals(GameMode.SURVIVAL))
-                    .forEach(p -> p.sendMessage(Component.text(String.format("%s herd spotted at (%d, %d, %d) [%dm]", type.getEntityClass().getSimpleName(), spawnLoc.getBlockX(), spawnLoc.getBlockY(), spawnLoc.getBlockZ(), Math.round(spawnLoc.distance(p.getLocation()))))));
+            spawnHerd(world, type);
         }
     }
 
