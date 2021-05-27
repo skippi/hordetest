@@ -15,6 +15,8 @@ import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.event.world.WorldInitEvent;
+import org.bukkit.generator.BlockPopulator;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.attribute.Attribute;
@@ -90,6 +92,36 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private static void populateSugarCane(@NotNull Chunk chunk, @NotNull Random random) {
+        @NotNull World world = chunk.getWorld();
+        List<Material> growBlocks = Arrays.asList(Material.SAND, Material.GRASS_BLOCK, Material.RED_SAND);
+        int count = 0;
+        for (int i = 0; i < 16; ++i) {
+            for (int j = 0; j < 16; ++j) {
+                if (count > 3) break;
+                @NotNull Block block = world.getHighestBlockAt(chunk.getBlock(i, 255, j).getLocation(), HeightMap.MOTION_BLOCKING_NO_LEAVES);
+                if (!growBlocks.contains(block.getType())) continue;
+                boolean hasWater = false;
+                for (int x = -1; x <= 1; ++x) {
+                    for (int z = -1; z <= 1; ++z) {
+                        if (0 <= i + x && i + x < 16 && 0 <= j + z && j + z < 16 && chunk.getBlock(i + x, block.getY(), j + z).getType().equals(Material.WATER)) {
+                            hasWater = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasWater) continue;
+                if (!(random.nextFloat() <= 0.1)) continue;
+                int stalkHeight = random.nextInt(2) + 2;
+                for (int k = 0; k < stalkHeight; ++k) {
+                    block = block.getRelative(BlockFace.UP);
+                    block.setType(Material.SUGAR_CANE, false);
+                }
+                ++count;
+            }
+        }
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -158,6 +190,16 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
         makeFlaxRecipes().forEach(getServer()::addRecipe);
         getServer().addRecipe(new StonecuttingRecipe(new NamespacedKey(this, "flint_cobblestone"), new ItemStack(Material.FLINT, 1), Material.COBBLESTONE));
+    }
+
+    @EventHandler
+    private void worldInit(WorldInitEvent event) {
+        event.getWorld().getPopulators().add(new BlockPopulator() {
+            @Override
+            public void populate(@NotNull World world, @NotNull Random random, @NotNull Chunk source) {
+                populateSugarCane(source, random);
+            }
+        });
     }
 
     private static List<ShapedRecipe> makeFlaxRecipes() {
