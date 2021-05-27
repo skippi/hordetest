@@ -1,6 +1,7 @@
 package io.github.skippi.hordetest.gravity;
 
 import io.github.skippi.hordetest.Blocks;
+import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
@@ -10,11 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class StressSystem {
-    private final Map<Block, Float> stressMap = new HashMap<>();
+    private final Map<Chunk, float[]> chunkStresses = new HashMap<>();
 
     public void update(Block block, PhysicsScheduler physicsScheduler) {
         if (!isStressAware(block)) {
-            stressMap.remove(block);
+            clearStress(block);
             return;
         }
         WorldBorder border = block.getWorld().getWorldBorder();
@@ -29,9 +30,30 @@ public class StressSystem {
         }
     }
 
+    private void clearStress(Block block) {
+        float[] stresses = getStressData(block.getChunk());
+        stresses[getOrdinalIndex(block)] = 0f;
+    }
+
+    private int getOrdinalIndex(Block block) {
+        int relX = block.getX() & 0xF;
+        int relY = block.getY() & 0xFF;
+        int relZ = block.getZ() & 0xF;
+        return getOrdinalIndex(relX, relY, relZ);
+    }
+
+    private int getOrdinalIndex(int chunkX, int chunkY, int chunkZ) {
+        return chunkX + 16 * chunkZ + 16 * 16 * chunkY;
+    }
+
+    private float[] getStressData(Chunk chunk) {
+        return chunkStresses.computeIfAbsent(chunk, c -> new float[16 * 16 * 256]);
+    }
+
     public float getStress(Block block) {
         if (isStressAware(block)) {
-            return stressMap.getOrDefault(block, 0f);
+            float[] stresses = getStressData(block.getChunk());
+            return stresses[getOrdinalIndex(block)];
         } else if (isPermanentlyStable(block)) {
             return 0.0f;
         } else {
@@ -52,7 +74,8 @@ public class StressSystem {
 
     private void setStress(Block block, float value) {
         if (!isStressAware(block)) return;
-        stressMap.put(block, value);
+        float[] stresses = getStressData(block.getChunk());
+        stresses[getOrdinalIndex(block)] = value;
     }
 
     private float getStressWeight(Material mat) {
@@ -62,7 +85,7 @@ public class StressSystem {
 
     private boolean isStressAware(Block block) {
         WorldBorder border = block.getWorld().getWorldBorder();
-        return !block.isEmpty() && !isPermanentlyStable(block) && border.isInside(block.getLocation());
+        return block.getWorld().isChunkLoaded(block.getChunk()) && !block.isEmpty() && !isPermanentlyStable(block) && border.isInside(block.getLocation());
     }
 
     private boolean isPermanentlyStable(Block block) {
