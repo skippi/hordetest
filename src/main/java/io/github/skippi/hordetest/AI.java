@@ -55,6 +55,24 @@ public class AI {
         if (entity instanceof Creature && !(entity instanceof Creeper)) {
             addAntiStuckAI((Creature) entity);
         }
+        if (entity instanceof Animals) {
+            addFastAgingAI((Animals) entity);
+        }
+    }
+
+    private static void addFastAgingAI(Animals animal) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!animal.isValid()) {
+                    cancel();
+                    return;
+                }
+                if (!animal.isAdult()) {
+                    animal.setAge(Math.min(0, animal.getAge() + 9));
+                }
+            }
+        }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
     public static boolean isArrowTurret(Entity entity) {
