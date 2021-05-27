@@ -77,7 +77,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         int z = RandomUtils.nextInt(16);
         int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
         @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
-        Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation())
+        Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation(), HeightMap.MOTION_BLOCKING_NO_LEAVES)
                 .getRelative(BlockFace.UP)
                 .getLocation();
         for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
