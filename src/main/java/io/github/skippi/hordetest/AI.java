@@ -172,8 +172,9 @@ public class AI {
                 Optional<Block> maybeBlock = AI.findDigTargetBlocks(spider, target.getLocation().toVector())
                         .findFirst();
                 if (maybeBlock.isPresent()) {
-                    AI.attack(spider, maybeBlock.get(), 1);
-                    cooldown = 40;
+                    AI.attack(spider, maybeBlock.get(), 0.5);
+                    cooldown = 20;
+                    CREATURE_TIMERS.computeIfPresent(spider, (s, t) -> 0);
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0 ,1);
@@ -200,25 +201,29 @@ public class AI {
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
 
+    private static Map<Creature, Integer> CREATURE_TIMERS = new HashMap<>();
+
     private static void addAntiStuckAI(Creature creature) {
+        CREATURE_TIMERS.put(creature, 0);
         new BukkitRunnable() {
-            int timer = 0;
             Location lastPos = creature.getLocation();
             @Override
             public void run() {
                 if (!creature.isValid()) {
+                    CREATURE_TIMERS.remove(creature);
                     cancel();
                     return;
                 }
                 if (creature.getTarget() == null) return;
                 if (!creature.isOnGround()) return;
-                if (timer++ < 80) return;
+                CREATURE_TIMERS.merge(creature, 1, Integer::sum);
+                if (CREATURE_TIMERS.get(creature) < 80) return;
                 double dist = creature.getLocation().toVector().distance(lastPos.toVector());
                 if (dist < 1.5) {
                     creature.remove();
                 }
                 lastPos = creature.getLocation();
-                timer = 0;
+                CREATURE_TIMERS.put(creature, 0);
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
     }
@@ -476,12 +481,12 @@ public class AI {
                 if (cooldown-- > 0) return;
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
-                if (zombie.hasLineOfSight(target)) return;
                 Optional<Block> maybeBlock = AI.findDigTargetBlocks(zombie, target.getLocation().toVector())
                         .findFirst();
                 if (maybeBlock.isPresent()) {
-                    AI.attack(zombie, maybeBlock.get(), 1);
-                    cooldown = 40;
+                    AI.attack(zombie, maybeBlock.get(), 0.1);
+                    cooldown = 10;
+                    CREATURE_TIMERS.computeIfPresent(zombie, (z, t) -> 0);
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
