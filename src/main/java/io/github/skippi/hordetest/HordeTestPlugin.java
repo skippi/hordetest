@@ -11,6 +11,7 @@ import io.github.skippi.hordetest.gravity.StressSystem;
 import io.github.skippi.hordetest.gravity.UpdateNeighborStressAction;
 import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import net.kyori.adventure.text.Component;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
 import org.bukkit.event.Event;
@@ -130,6 +131,41 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private static void populateExtraOre(@NotNull Chunk chunk, @NotNull Random random, Material ore, double chance, IntRange sizeRange, IntRange heightRange) {
+        for (int i = 0; i < 16; ++i) {
+            for (int k = 0; k < 16; ++k) {
+                for (int j = heightRange.getMinimumInteger(); j < heightRange.getMaximumInteger(); ++j) {
+                    @NotNull Block block = chunk.getBlock(i, j, k);
+                    if (!block.getType().equals(Material.STONE)) continue;
+                    if (!(random.nextFloat() <= chance)) continue;
+                    int veinSize = random.nextInt(sizeRange.getMaximumInteger() - sizeRange.getMinimumInteger()) + sizeRange.getMinimumInteger();
+                    Queue<Block> queue = new ArrayDeque<>();
+                    queue.add(block);
+                    while (!queue.isEmpty() && veinSize > 0) {
+                        Block curr = queue.remove();
+                        if (!curr.getType().equals(Material.STONE)) continue;
+                        --veinSize;
+                        curr.setType(ore, false);
+                        getRelativeWithinChunk(curr, 0, 1, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 1, 0, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, 0, 1).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, -1, 0, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, 0, -1).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, -1, 0).ifPresent(queue::add);
+                    }
+                }
+            }
+        }
+    }
+
+    private static Optional<Block> getRelativeWithinChunk(Block block, int x, int y, int z) {
+        int relX = (block.getX() & 0xF) + x;
+        int relY = (block.getY() & 0xFF) + y;
+        int relZ = (block.getZ() & 0xF) + z;
+        if (!(0 <= relX && relX < 16 && 0 <= relY && relY < 256 && 0 <= relZ && relZ < 16)) return Optional.empty();
+        return Optional.of(block.getChunk().getBlock(relX, relY, relZ));
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -206,6 +242,13 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             @Override
             public void populate(@NotNull World world, @NotNull Random random, @NotNull Chunk source) {
                 populateSugarCane(source, random);
+                populateExtraOre(source, random, Material.IRON_ORE, 5.0 / 15360, new IntRange(4, 10), new IntRange(0, 128));
+                populateExtraOre(source, random, Material.COAL_ORE, 8.0 / 15360, new IntRange(4, 10), new IntRange(0, 96));
+                populateExtraOre(source, random, Material.GOLD_ORE, 5.0 / 15360, new IntRange(4, 10), new IntRange(0, 80));
+                populateExtraOre(source, random, Material.REDSTONE_ORE, 10.0 / 15360, new IntRange(6, 12), new IntRange(0, 128));
+                populateExtraOre(source, random, Material.DIAMOND_ORE, 1.0 / 15360, new IntRange(1, 4), new IntRange(0, 16));
+                populateExtraOre(source, random, Material.EMERALD_ORE, 1.0 / 15360, new IntRange(1, 4), new IntRange(0, 33));
+                populateExtraOre(source, random, Material.LAPIS_ORE, 4.0 / 15360, new IntRange(4, 8), new IntRange(0, 64));
             }
         });
     }
