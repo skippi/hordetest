@@ -131,6 +131,40 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private static void populateCobweb(@NotNull Chunk chunk, @NotNull Random random, IntRange sizeRange) {
+        int maxCount = 3;
+        for (int i = 0; i < 16; ++i) {
+            for (int k = 0; k < 16; ++k) {
+                for (int j = 0; j < 96; ++j) {
+                    if (maxCount <= 0) break;
+                    @NotNull Block block = chunk.getBlock(i, j, k);
+                    if (!block.isEmpty()) continue;
+                    Optional<Block> above = getRelativeWithinChunk(block, 0, 1, 0);
+                    if (!(above.isPresent() && above.get().getType().equals(Material.STONE))) continue;
+                    if (!(random.nextFloat() <= 0.005)) continue;
+                    int veinSize = random.nextInt(sizeRange.getMaximumInteger() - sizeRange.getMinimumInteger()) + sizeRange.getMinimumInteger();
+                    Queue<Block> queue = new ArrayDeque<>();
+                    queue.add(block);
+                    while (!queue.isEmpty() && veinSize > 0) {
+                        Block curr = queue.remove();
+                        if (!curr.isEmpty()) continue;
+                        Optional<Block> currAbove = getRelativeWithinChunk(curr, 0, 1, 0);
+                        if (!(currAbove.isPresent() && currAbove.get().getType().equals(Material.STONE))) continue;
+                        --veinSize;
+                        curr.setType(Material.COBWEB, false);
+                        getRelativeWithinChunk(curr, 0, 1, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 1, 0, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, 0, 1).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, -1, 0, 0).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, 0, -1).ifPresent(queue::add);
+                        getRelativeWithinChunk(curr, 0, -1, 0).ifPresent(queue::add);
+                    }
+                    --maxCount;
+                }
+            }
+        }
+    }
+
     private static void populateExtraOre(@NotNull Chunk chunk, @NotNull Random random, Material ore, double chance, IntRange sizeRange, IntRange heightRange) {
         for (int i = 0; i < 16; ++i) {
             for (int k = 0; k < 16; ++k) {
@@ -242,6 +276,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             @Override
             public void populate(@NotNull World world, @NotNull Random random, @NotNull Chunk source) {
                 populateSugarCane(source, random);
+                populateCobweb(source, random, new IntRange(5, 10));
                 populateExtraOre(source, random, Material.IRON_ORE, 5.0 / 15360, new IntRange(4, 10), new IntRange(0, 128));
                 populateExtraOre(source, random, Material.COAL_ORE, 8.0 / 15360, new IntRange(4, 10), new IntRange(0, 96));
                 populateExtraOre(source, random, Material.GOLD_ORE, 5.0 / 15360, new IntRange(4, 10), new IntRange(0, 80));
