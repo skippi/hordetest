@@ -383,7 +383,7 @@ public class AI {
                     cancel();
                     return;
                 }
-                double climbSpeed = 0.45 + 0.5 * (1 - Math.max(0, getExposureTime(zombie)) / 20.0);
+                final double climbSpeed = lerp(0.425, 0.9, 1 - Math.max(0, getExposureTime(zombie)) / 20.0);
                 @Nullable LivingEntity target = zombie.getTarget();
                 if (target == null) return;
                 if (target.getLocation().getY() < zombie.getLocation().getY()) return;
@@ -422,11 +422,7 @@ public class AI {
                 setExposureTime(zombie, Ints.constrainToRange(getExposureTime(zombie) + (isInLight ? 1 : -1), -20, 20));
                 AttributeInstance speedAttr = zombie.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
                 assert speedAttr != null;
-                if (getExposureTime(zombie) <= 0) {
-                    speedAttr.setBaseValue(0.7);
-                } else {
-                    speedAttr.setBaseValue(0.7 - 0.016 * getExposureTime(zombie));
-                }
+                speedAttr.setBaseValue(lerp(0.276, 0.6, 1 - Math.max(0, getExposureTime(zombie)) / 20.0));
                 if ((zombie.isInWater() || zombie.isInLava()) && zombie.getTarget() != null && zombie.getTarget().getLocation().distance(zombie.getLocation()) > 1.5) {
                     @NotNull Vector dir = zombie.getTarget().getLocation().clone().subtract(zombie.getLocation()).toVector().normalize();
                     @NotNull Vector horz = dir.clone().setY(0).multiply(speedAttr.getValue() * 0.6);
@@ -434,6 +430,10 @@ public class AI {
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
+    }
+
+    private static double lerp(double a, double b, double f) {
+        return a + f * (b - a);
     }
 
     private static void addArrowTurretAI(ArmorStand turret) {
