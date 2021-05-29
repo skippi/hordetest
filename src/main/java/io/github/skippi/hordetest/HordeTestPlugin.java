@@ -205,7 +205,8 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
             @Nullable World world = Bukkit.getWorld("world");
-            if (world.getTime() == 23460) {
+            if (23460 <= world.getTime() && world.getTime() < 23470) {
+                world.setTime(23470);
                 ++STAGE;
                 world.getPlayers().stream()
                         .filter(p -> p.getGameMode().equals(GameMode.SPECTATOR))
@@ -226,6 +227,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> Bukkit.getWorlds().forEach(w -> w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, hasSurvivors(w))), 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, HordeTestPlugin::tickHordeSpawns, 0, 1);
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, PHYSICS_SCHEDULER::tick, 0, 1);
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
+            for (World world : Bukkit.getWorlds()) {
+                if (!world.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)) continue;
+                if ((isHordeTime(world.getTime()) || STAGE >= 2) && world.getTime() % 2 == 0) {
+                    world.setTime(world.getTime() + 1);
+                }
+            }
+        }, 0, 1);
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
         Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeSquarePaintBrush()));
