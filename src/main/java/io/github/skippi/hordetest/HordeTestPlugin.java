@@ -681,14 +681,31 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private static boolean isComposedOf(Material self, Material composeType) {
+        if (self.toString().contains("FENCE")) {
+            return composeType.toString().endsWith("PLANKS");
+        } else if (self.toString().contains("COBBLESTONE")) {
+            return composeType.equals(Material.COBBLESTONE);
+        } else if (self.toString().contains("STONE_BRICK")) {
+            return composeType.equals(Material.STONE);
+        } else if (self.equals(Material.IRON_DOOR) || self.equals(Material.IRON_TRAPDOOR)) {
+            return composeType.equals(Material.IRON_BARS);
+        } else if (self.toString().contains("DOOR")) {
+            return composeType.toString().endsWith("PLANKS");
+        }
+        return false;
+    }
+
     @EventHandler
     private void doRepair(PlayerInteractEvent event) {
         if (!event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) return;
         if (!(event.getItem() != null && event.getClickedBlock().isValidTool(event.getItem()))) return;
         if (getBlockHealthManager().getHealth(event.getClickedBlock()) >= getBlockHealthManager().getMaxHealth(event.getClickedBlock())) return;
-        Optional<ItemStack> maybeSupply = StreamSupport.stream(event.getPlayer().getInventory().spliterator(), false)
-                .filter(i -> i != null && i.getType().equals(event.getClickedBlock().getType()))
-                .findFirst();
+        Stream<ItemStack> composed = StreamSupport.stream(event.getPlayer().getInventory().spliterator(), false)
+                .filter(i -> i != null && isComposedOf(event.getClickedBlock().getType(), i.getType()));
+        Stream<ItemStack> exact = StreamSupport.stream(event.getPlayer().getInventory().spliterator(), false)
+                .filter(i -> i != null && i.getType().equals(event.getClickedBlock().getType()));
+        Optional<ItemStack> maybeSupply = Stream.concat(composed, exact).findFirst();
         if (!maybeSupply.isPresent()) return;
         getBlockHealthManager().reset(event.getClickedBlock());
         maybeSupply.get().setAmount(maybeSupply.get().getAmount() - 1);
