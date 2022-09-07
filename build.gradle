@@ -1,25 +1,38 @@
 plugins {
-    id 'java-library'
+    id "java-library"
+    id "com.diffplug.spotless" version "6.10.0"
 }
 
 repositories {
     mavenCentral()
-    maven { url 'https://papermc.io/repo/repository/maven-public/' }
+    maven { url "https://papermc.io/repo/repository/maven-public/" }
     maven { url "https://repo.dmulloy2.net/repository/public/" }
     mavenLocal()
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.19.2-R0.1-SNAPSHOT'
-    compileOnly 'com.comphenix.protocol:ProtocolLib:4.8.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    compileOnly "io.papermc.paper:paper-api:1.19.2-R0.1-SNAPSHOT"
+    compileOnly "com.comphenix.protocol:ProtocolLib:4.8.0"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine"
 }
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 }
 
-tasks.named('test') {
+spotless {
+  java {
+    importOrder()
+    removeUnusedImports()
+    googleJavaFormat("1.15.0")
+  }
+}
+
+tasks.named("test") {
     useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ["-Xlint:deprecation"]
 }
