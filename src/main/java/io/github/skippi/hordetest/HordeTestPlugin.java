@@ -11,8 +11,6 @@ import io.github.skippi.hordetest.gravity.StressSystem;
 import io.github.skippi.hordetest.gravity.UpdateNeighborStressAction;
 import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import net.kyori.adventure.text.Component;
-import org.apache.commons.lang.math.IntRange;
-import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.*;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerBedEnterEvent;
@@ -42,6 +40,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -74,14 +73,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     private static Map<World, Double> WORLD_HEIGHT_AVERAGES = new HashMap<>();
 
     private static void spawnHerd(World world, EntityType type) {
-        int x = RandomUtils.nextInt(16);
-        int z = RandomUtils.nextInt(16);
+        int x = ThreadLocalRandom.current().nextInt(16);
+        int z = ThreadLocalRandom.current().nextInt(16);
         int innerChunkRadius = Math.max(0, getChunkRadius(world) - 1);
-        @NotNull Chunk chunk = world.getChunkAt(RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius, RandomUtils.nextInt(2 * innerChunkRadius) - innerChunkRadius);
+        @NotNull Chunk chunk = world.getChunkAt(ThreadLocalRandom.current().nextInt(2 * innerChunkRadius) - innerChunkRadius, ThreadLocalRandom.current().nextInt(2 * innerChunkRadius) - innerChunkRadius);
         Location spawnLoc = world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation(), HeightMap.MOTION_BLOCKING_NO_LEAVES)
                 .getRelative(BlockFace.UP)
                 .getLocation();
-        for (int j = 0; j < RandomUtils.nextInt(3) + 5; ++j) {
+        for (int j = 0; j < ThreadLocalRandom.current().nextInt(3) + 5; ++j) {
             world.spawnEntity(spawnLoc, type);
         }
         world.getPlayers().stream()
@@ -96,7 +95,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             spawnHerd(world, EntityType.CHICKEN);
         }
         for (int i = 0; i < survivorCount * 2; ++i) {
-            EntityType type = animalTypes.get(RandomUtils.nextInt(animalTypes.size()));
+            EntityType type = animalTypes.get(ThreadLocalRandom.current().nextInt(animalTypes.size()));
             spawnHerd(world, type);
         }
     }
@@ -278,6 +277,24 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         getServer().addRecipe(new StonecuttingRecipe(new NamespacedKey(this, "flint_cobblestone"), new ItemStack(Material.FLINT, 1), Material.COBBLESTONE));
     }
 
+    class IntRange {
+        private int min;
+        private int max;
+
+        IntRange(int min, int max) {
+            this.min = min;
+            this.max = max;
+        }
+
+        public int getMinimumInteger() {
+            return min;
+        }
+
+        public int getMaximumInteger() {
+            return max;
+        }
+    }
+
     @EventHandler
     private void worldInit(WorldInitEvent event) {
         event.getWorld().getPopulators().add(new BlockPopulator() {
@@ -325,7 +342,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static void tryHordeSpawn(Player player, EntityType type, int perPlayerLimit, double chance) {
         assert 0.0 <= chance && chance <= 1.0;
-        if (RandomUtils.nextFloat() >= chance) return;
+        if (ThreadLocalRandom.current().nextFloat() >= chance) return;
         final long unitLimit = (long) (Bukkit.getOnlinePlayers().stream()
                 .mapToDouble(p -> {
                     double multiplier = 1.0;
@@ -372,7 +389,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
                 .filter(p -> !p.getGameMode().equals(GameMode.SPECTATOR))
                 .collect(Collectors.toList());
         for (int i = 0; i < survivors.size(); ++i) {
-            Player player = survivors.get(RandomUtils.nextInt(survivors.size()));
+            Player player = survivors.get(ThreadLocalRandom.current().nextInt(survivors.size()));
             @NotNull World world = player.getWorld();
             if (!isHordeTime(world.getTime())) return;
             if (STAGE == 1) {
@@ -417,7 +434,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
     private static @NotNull Optional<Location> genHostileSpawnLocation(Player player) {
         @NotNull World world = player.getWorld();
-        @NotNull Vector dir = new Vector(-1 + RandomUtils.nextFloat() * 2, 0, -1 + RandomUtils.nextFloat() * 2).normalize();
+        @NotNull Vector dir = new Vector(-1 + ThreadLocalRandom.current().nextFloat() * 2, 0, -1 + ThreadLocalRandom.current().nextFloat() * 2).normalize();
         BlockIterator iter = new BlockIterator(world, player.getLocation().toVector(), dir, 0, 500);
         int count = 0;
         while (iter.hasNext()) {
@@ -512,7 +529,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         loc.getWorld().spawn(loc, ArmorStand.class, turret -> {
             turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.BOW));
             turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
-            turret.setCustomName("Arrow Turret");
+            turret.customName(Component.text("Arrow Turret"));
             turret.setCustomNameVisible(true);
             turret.setHealth(5);
         });
@@ -541,14 +558,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         @NotNull ArmorStand turret = loc.getWorld().spawn(loc, ArmorStand.class);
         turret.setItem(EquipmentSlot.HEAD, new ItemStack(Material.STONE));
         turret.setItem(EquipmentSlot.CHEST, new ItemStack(Material.LEATHER_CHESTPLATE));
-        turret.setCustomName("Repair Turret");
+        turret.customName(Component.text("Repair Turret"));
         turret.setCustomNameVisible(true);
         turret.setHealth(5);
         repairTurretInvs.put(turret.getUniqueId(), Bukkit.createInventory(null, InventoryType.DISPENSER));
     }
 
     private boolean isRepairTurret(Entity entity) {
-        return entity instanceof ArmorStand && entity.getCustomName().startsWith("Repair Turret");
+        return entity instanceof ArmorStand && entity.customName().examinableName().startsWith("Repair Turret");
     }
 
     private boolean isRepairTurret(ItemStack stack) {
@@ -710,7 +727,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         getBlockHealthManager().reset(event.getClickedBlock());
         maybeSupply.get().setAmount(maybeSupply.get().getAmount() - 1);
         event.getPlayer().swingMainHand();
-        event.getClickedBlock().getWorld().playSound(event.getClickedBlock().getLocation(), event.getClickedBlock().getSoundGroup().getPlaceSound(), 0.5f, 0.5f);
+        event.getClickedBlock().getWorld().playSound(event.getClickedBlock().getLocation(), event.getClickedBlock().getBlockSoundGroup().getPlaceSound(), 0.5f, 0.5f);
     }
 
     @EventHandler

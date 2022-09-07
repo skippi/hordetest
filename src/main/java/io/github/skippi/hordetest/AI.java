@@ -3,7 +3,6 @@ package io.github.skippi.hordetest;
 import com.destroystokyo.paper.entity.ai.VanillaGoal;
 import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import com.google.common.primitives.Ints;
-import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -21,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -43,7 +43,7 @@ public class AI {
             AI.addPatienceAI((Creeper) entity);
         } else if (entity instanceof Spider) {
             Spider spider = (Spider) entity;
-            Bukkit.getMobGoals().removeGoal(spider, VanillaGoal.LEAP_AT_TARGET);
+            Bukkit.getMobGoals().removeGoal(spider, VanillaGoal.LEAP_AT);
             addLeapAI(spider);
             addDigAI(spider);
         } else if (entity instanceof Phantom) {
@@ -76,7 +76,7 @@ public class AI {
     }
 
     public static boolean isArrowTurret(Entity entity) {
-        return entity instanceof ArmorStand && entity.getCustomName() != null && entity.getCustomName().startsWith("Arrow Turret");
+        return entity instanceof ArmorStand && entity.customName() != null && entity.customName().examinableName().startsWith("Arrow Turret");
     }
 
     private static void addLeapAI(Spider spider) {
@@ -92,7 +92,7 @@ public class AI {
                 double dist = spider.getTarget().getLocation().distance(spider.getLocation());
                 if (4 <= dist && dist <= 15) {
                     final double areaDeviation = 4.0;
-                    @NotNull Location to = spider.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
+                    @NotNull Location to = spider.getTarget().getLocation().clone().add(-areaDeviation / 2 + ThreadLocalRandom.current().nextFloat() * areaDeviation, 0, -areaDeviation / 2 + ThreadLocalRandom.current().nextFloat() * areaDeviation);
                     double gravity = -0.4;
                     double heightDelta = to.getY() - spider.getLocation().getY();
                     double risingHeight = (heightDelta > 0) ? Math.max(4, heightDelta + 2) : Math.max(2, heightDelta + 4);
@@ -286,7 +286,7 @@ public class AI {
                         if (cooldown <= 0 && dist <= 100) {
                             Creature yeeted = (Creature) golem.getWorld().spawn(golem.getLocation().clone().add(0, 2, 0), pocket.get());
                             double areaDeviation = dist / 100 * 16;
-                            @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation, 0, -areaDeviation / 2 + RandomUtils.nextFloat() * areaDeviation);
+                            @NotNull Location to = golem.getTarget().getLocation().clone().add(-areaDeviation / 2 + ThreadLocalRandom.current().nextFloat() * areaDeviation, 0, -areaDeviation / 2 + ThreadLocalRandom.current().nextFloat() * areaDeviation);
                             double heightDelta = to.getY() - yeeted.getLocation().getY();
                             double risingHeight = (heightDelta > 0) ? Math.max(60, heightDelta + 20) : Math.max(10, heightDelta + 60);
                             final double gravity = -0.08;
@@ -463,7 +463,7 @@ public class AI {
                     @NotNull Arrow arrow = turret.launchProjectile(Arrow.class);
                     arrow.setVelocity(dir.clone().multiply(3));
                     arrow.setShooter(turret);
-                    cooldown = 17 + RandomUtils.nextInt(3);
+                    cooldown = 17 + ThreadLocalRandom.current().nextInt(3);
                 }
             }
         }.runTaskTimer(HordeTestPlugin.getInstance(), 0, 1);
@@ -567,7 +567,7 @@ public class AI {
 
     public static void attack(LivingEntity entity, Block block, double damage) {
         entity.swingMainHand();
-        entity.getWorld().playSound(block.getLocation(), block.getSoundGroup().getHitSound(), 0.5f, 0);
+        entity.getWorld().playSound(block.getLocation(), block.getBlockSoundGroup().getHitSound(), 0.5f, 0);
         HordeTestPlugin.getBlockHealthManager().damage(block, damage);
     }
 }

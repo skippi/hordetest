@@ -4,7 +4,6 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 
-import org.apache.commons.lang.math.RandomUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -14,6 +13,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class BlockHealthManager {
     private final Map<Block, Double> blockHealths = new HashMap<>();
@@ -47,7 +47,7 @@ public class BlockHealthManager {
         if (value > 0f) {
             blockHealths.put(block, value);
         } else {
-            block.getWorld().playSound(block.getLocation(), block.getSoundGroup().getBreakSound(), 1, 0);
+            block.getWorld().playSound(block.getLocation(), block.getBlockSoundGroup().getBreakSound(), 1, 0);
             block.setType(Material.AIR);
             blockHealths.remove(block);
         }
@@ -61,7 +61,7 @@ public class BlockHealthManager {
     }
 
     private void animateBlockBreak(Block block, double percent) {
-        int id = breakIds.computeIfAbsent(block, k -> RandomUtils.nextInt());
+        int id = breakIds.computeIfAbsent(block, k -> ThreadLocalRandom.current().nextInt());
         int stage = percent > 0 ? (int)(percent * 9) : 10;
         PacketContainer packet = HordeTestPlugin.getProtocolManager().createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         packet.getIntegers().write(0, id).write(1, stage);
