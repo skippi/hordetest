@@ -3,7 +3,6 @@ package io.github.skippi.hordetest;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,7 +76,7 @@ public class BlockHealthManager {
     for (Player player : block.getWorld().getPlayers()) {
       try {
         HordeTestPlugin.getProtocolManager().sendServerPacket(player, packet);
-      } catch (InvocationTargetException e) {
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
