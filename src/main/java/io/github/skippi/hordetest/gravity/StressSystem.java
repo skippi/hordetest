@@ -2,7 +2,9 @@ package io.github.skippi.hordetest.gravity;
 
 import io.github.skippi.hordetest.Blocks;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.bukkit.Material;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
@@ -10,8 +12,12 @@ import org.bukkit.block.BlockFace;
 
 public class StressSystem {
   private final Map<ChunkPos, float[]> chunkStresses = new HashMap<>();
+  private final Set<Block> visited = new HashSet<>();
 
   public void update(Block block, PhysicsScheduler physicsScheduler) {
+    if (visited.contains(block)) {
+      return;
+    }
     if (!isStressAware(block)) {
       clearStress(block);
       return;
@@ -26,6 +32,10 @@ public class StressSystem {
       setStress(block, newStress);
       physicsScheduler.schedule(new UpdateNeighborStressAction(block));
     }
+  }
+
+  public void resetHistory() {
+    visited.clear();
   }
 
   private void clearStress(Block block) {
@@ -53,13 +63,25 @@ public class StressSystem {
     return stresses[getOrdinalIndex(block)];
   }
 
+  private static final BlockFace[] HORIZONTAL_FACES = {
+    BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
+  };
+
   private float computeNewStress(Block block) {
     if (!isStressAware(block)) return 0f;
     Block below = block.getRelative(BlockFace.DOWN);
     float result = isBaseable(below) ? getStress(below) : 1.0f;
-    for (Block side : Blocks.getAdjacentBlocks(block)) {
+    if (result == 0f) {
+      return result;
+    }
+    for (var face : HORIZONTAL_FACES) {
+      var side = block.getRelative(face);
       if (!isBaseable(side)) continue;
-      result = Math.min(result, getStress(side) + getStressWeight(side.getType()));
+      var stress = getStress(side);
+      result = Math.min(result, stress + getStressWeight(side.getType()));
+      if (stress == 0f) {
+        break;
+      }
     }
     return result;
   }
@@ -70,9 +92,16 @@ public class StressSystem {
     stresses[getOrdinalIndex(block)] = value;
   }
 
+  private final Map<Material, Float> weightMemo = new HashMap<>();
+
   private float getStressWeight(Material mat) {
-    float weight = 1.0f / (mat.getHardness() + mat.getBlastResistance());
-    return clamp(weight, 1 / 12f, 1f);
+    return weightMemo.computeIfAbsent(
+        mat,
+        m -> {
+          float weight = 1.0f / (mat.getHardness() + mat.getBlastResistance());
+          weight = clamp(weight, 1 / 12f, 1f);
+          return weight;
+        });
   }
 
   private boolean isStressAware(Block block) {

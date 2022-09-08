@@ -13,6 +13,6 @@ public class UpdateStressAction implements Action {
   @Override
   public double call(PhysicsScheduler physicsScheduler) {
     HordeTestPlugin.SS.update(block, physicsScheduler);
-    return 1 / 4028;
+    return 0;
   }
 }

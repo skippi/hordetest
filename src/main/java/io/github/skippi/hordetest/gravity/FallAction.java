@@ -14,7 +14,7 @@ public class FallAction implements Action {
   @Override
   public double call(PhysicsScheduler physicsScheduler) {
     if (block.isEmpty()) return 0;
-    if (physicsScheduler.size() > 512) {
+    if (physicsScheduler.size() > 1024) {
       var curr = block.getRelative(BlockFace.DOWN);
       while (curr.getY() > 0 && canFall(curr)) {
         curr = curr.getRelative(BlockFace.DOWN);
