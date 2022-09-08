@@ -13,12 +13,7 @@ public class UpdateNeighborStressAction implements Action {
   }
 
   @Override
-  public double getWeight() {
-    return 0;
-  }
-
-  @Override
-  public void call(PhysicsScheduler physicsScheduler) {
+  public double call(PhysicsScheduler physicsScheduler) {
     BlockFace[] facesToCheck = {
       BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.UP
     };
@@ -26,5 +21,6 @@ public class UpdateNeighborStressAction implements Action {
       if (!neighbor.getWorld().getWorldBorder().isInside(neighbor.getLocation())) continue;
       physicsScheduler.schedule(new UpdateStressAction(neighbor));
     }
+    return 0;
   }
 }

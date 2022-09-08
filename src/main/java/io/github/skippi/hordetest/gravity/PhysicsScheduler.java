@@ -14,8 +14,11 @@ public class PhysicsScheduler {
     double weight = 0.0;
     while (!queue.isEmpty() && weight < 1.0) {
       Action action = queue.remove();
-      action.call(this);
-      weight += action.getWeight();
+      weight += action.call(this);
     }
+  }
+
+  public int size() {
+    return queue.size();
   }
 }

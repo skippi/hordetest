@@ -11,12 +11,8 @@ public class UpdateStressAction implements Action {
   }
 
   @Override
-  public double getWeight() {
-    return 0;
-  }
-
-  @Override
-  public void call(PhysicsScheduler physicsScheduler) {
+  public double call(PhysicsScheduler physicsScheduler) {
     HordeTestPlugin.SS.update(block, physicsScheduler);
+    return 1 / 4028;
   }
 }

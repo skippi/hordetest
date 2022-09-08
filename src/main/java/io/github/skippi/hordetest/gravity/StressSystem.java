@@ -3,14 +3,13 @@ package io.github.skippi.hordetest.gravity;
 import io.github.skippi.hordetest.Blocks;
 import java.util.HashMap;
 import java.util.Map;
-import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 
 public class StressSystem {
-  private final Map<Chunk, float[]> chunkStresses = new HashMap<>();
+  private final Map<ChunkPos, float[]> chunkStresses = new HashMap<>();
 
   public void update(Block block, PhysicsScheduler physicsScheduler) {
     if (!isStressAware(block)) {
@@ -30,7 +29,7 @@ public class StressSystem {
   }
 
   private void clearStress(Block block) {
-    float[] stresses = getStressData(block.getChunk());
+    float[] stresses = getStressData(block);
     stresses[getOrdinalIndex(block)] = 0f;
   }
 
@@ -45,19 +44,13 @@ public class StressSystem {
     return chunkX + 16 * chunkZ + 16 * 16 * chunkY;
   }
 
-  private float[] getStressData(Chunk chunk) {
-    return chunkStresses.computeIfAbsent(chunk, c -> new float[16 * 16 * 256]);
+  private float[] getStressData(Block block) {
+    return chunkStresses.computeIfAbsent(ChunkPos.from(block), c -> new float[16 * 16 * 256]);
   }
 
   public float getStress(Block block) {
-    if (isStressAware(block)) {
-      float[] stresses = getStressData(block.getChunk());
-      return stresses[getOrdinalIndex(block)];
-    } else if (isPermanentlyStable(block)) {
-      return 0.0f;
-    } else {
-      return 1.0f;
-    }
+    float[] stresses = getStressData(block);
+    return stresses[getOrdinalIndex(block)];
   }
 
   private float computeNewStress(Block block) {
@@ -73,7 +66,7 @@ public class StressSystem {
 
   private void setStress(Block block, float value) {
     if (!isStressAware(block)) return;
-    float[] stresses = getStressData(block.getChunk());
+    float[] stresses = getStressData(block);
     stresses[getOrdinalIndex(block)] = value;
   }
 
@@ -84,20 +77,18 @@ public class StressSystem {
 
   private boolean isStressAware(Block block) {
     WorldBorder border = block.getWorld().getWorldBorder();
-    return block.getWorld().isChunkLoaded(block.getChunk())
+    return border.isInside(block.getLocation())
+        && block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
         && !block.isEmpty()
-        && !isPermanentlyStable(block)
-        && border.isInside(block.getLocation());
+        && !isPermanentlyStable(block);
   }
 
   private boolean isPermanentlyStable(Block block) {
-    Material mat = block.getType();
-    return mat == Material.BEDROCK || block.isLiquid() || Blocks.isLeaves(block);
+    return block.isLiquid() || Blocks.isLeaves(block) || block.getType() == Material.BEDROCK;
   }
 
   private boolean isBaseable(Block block) {
-    Material mat = block.getType();
-    return (!block.isEmpty() && !block.isLiquid() && mat != Material.GRASS);
+    return (!block.isEmpty() && !block.isLiquid() && block.getType() != Material.GRASS);
   }
 
   private float clamp(float value, float min, float max) {
