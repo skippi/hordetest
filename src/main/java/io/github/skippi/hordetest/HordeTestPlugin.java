@@ -969,7 +969,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
   @EventHandler
   private void gravityPhysics(BlockPhysicsEvent event) {
-    SS.resetHistory();
     Block block = event.getBlock();
     PHYSICS_SCHEDULER.schedule(new UpdateNeighborStressAction(block));
     PHYSICS_SCHEDULER.schedule(new UpdateStressAction(block));

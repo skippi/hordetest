@@ -3,22 +3,17 @@ package io.github.skippi.hordetest.gravity;
 import io.github.skippi.hordetest.Blocks;
 import io.github.skippi.hordetest.HordeTestPlugin;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
-import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.persistence.PersistentDataType;
 
 public class StressSystem {
   private final Map<ChunkPos, byte[]> chunkStresses = new HashMap<>();
-  private final Set<Block> visited = new HashSet<>();
 
   public void update(Block block, PhysicsScheduler physicsScheduler) {
-    if (visited.contains(block)) return;
     if (!block.getWorld().getWorldBorder().isInside(block.getLocation())) return;
     if (!block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) return;
     if (!isStressAware(block)) {
@@ -50,10 +45,6 @@ public class StressSystem {
     chunk
         .getPersistentDataContainer()
         .set(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY, data);
-  }
-
-  public void resetHistory() {
-    visited.clear();
   }
 
   private void clearStress(Block block) {
@@ -119,8 +110,7 @@ public class StressSystem {
   }
 
   private boolean isStressAware(Block block) {
-    WorldBorder border = block.getWorld().getWorldBorder();
-    return border.isInside(block.getLocation())
+    return block.getWorld().getWorldBorder().isInside(block.getLocation())
         && block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
         && !block.isEmpty()
         && !isPermanentlyStable(block);
@@ -131,7 +121,11 @@ public class StressSystem {
   }
 
   private boolean isBaseable(Block block) {
-    return (!block.isEmpty() && !block.isLiquid() && block.getType() != Material.GRASS);
+    return block.getWorld().getWorldBorder().isInside(block.getLocation())
+        && block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
+        && !block.isEmpty()
+        && !block.isLiquid()
+        && block.getType() != Material.GRASS;
   }
 
   private float clamp(float value, float min, float max) {
