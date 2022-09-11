@@ -1,31 +1,32 @@
 package io.github.skippi.hordetest.gravity;
 
 import io.github.skippi.hordetest.Blocks;
+import io.github.skippi.hordetest.HordeTestPlugin;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.persistence.PersistentDataType;
 
 public class StressSystem {
-  private final Map<ChunkPos, float[]> chunkStresses = new HashMap<>();
+  private final Map<ChunkPos, byte[]> chunkStresses = new HashMap<>();
   private final Set<Block> visited = new HashSet<>();
 
   public void update(Block block, PhysicsScheduler physicsScheduler) {
-    if (visited.contains(block)) {
-      return;
-    }
+    if (visited.contains(block)) return;
+    if (!block.getWorld().getWorldBorder().isInside(block.getLocation())) return;
+    if (!block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) return;
     if (!isStressAware(block)) {
       clearStress(block);
       return;
     }
-    WorldBorder border = block.getWorld().getWorldBorder();
-    if (!border.isInside(block.getLocation())) return;
-    float newStress = computeNewStress(block);
-    if (newStress >= 1.0) {
+    byte newStress = computeNewStress(block);
+    if (newStress >= 64) {
       physicsScheduler.schedule(new FallAction(block));
     }
     if (getStress(block) != newStress) {
@@ -34,13 +35,32 @@ public class StressSystem {
     }
   }
 
+  public void loadChunk(Chunk chunk) {
+    var data =
+        chunk
+            .getPersistentDataContainer()
+            .get(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY);
+    if (data == null) return;
+    chunkStresses.put(ChunkPos.from(chunk), data);
+  }
+
+  public void unloadChunk(Chunk chunk) {
+    var data = chunkStresses.remove(ChunkPos.from(chunk));
+    if (data == null) return;
+    chunk
+        .getPersistentDataContainer()
+        .set(
+            HordeTestPlugin.stressKey,
+            PersistentDataType.BYTE_ARRAY,
+            data);
+  }
+
   public void resetHistory() {
     visited.clear();
   }
 
   private void clearStress(Block block) {
-    float[] stresses = getStressData(block);
-    stresses[getOrdinalIndex(block)] = 0f;
+    getStressData(block)[getOrdinalIndex(block)] = 0;
   }
 
   private int getOrdinalIndex(Block block) {
@@ -54,53 +74,50 @@ public class StressSystem {
     return chunkX + 16 * chunkZ + 16 * 16 * chunkY;
   }
 
-  private float[] getStressData(Block block) {
-    return chunkStresses.computeIfAbsent(ChunkPos.from(block), c -> new float[16 * 16 * 256]);
+  private byte[] getStressData(Block block) {
+    return chunkStresses.computeIfAbsent(ChunkPos.from(block), c -> new byte[16 * 16 * 256]);
   }
 
-  public float getStress(Block block) {
-    float[] stresses = getStressData(block);
-    return stresses[getOrdinalIndex(block)];
+  public byte getStress(Block block) {
+    return getStressData(block)[getOrdinalIndex(block)];
   }
 
   private static final BlockFace[] HORIZONTAL_FACES = {
     BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST
   };
 
-  private float computeNewStress(Block block) {
-    if (!isStressAware(block)) return 0f;
+  private byte computeNewStress(Block block) {
     Block below = block.getRelative(BlockFace.DOWN);
-    float result = isBaseable(below) ? getStress(below) : 1.0f;
-    if (result == 0f) {
+    byte result = isBaseable(below) ? getStress(below) : 64;
+    if (result == 0) {
       return result;
     }
     for (var face : HORIZONTAL_FACES) {
       var side = block.getRelative(face);
       if (!isBaseable(side)) continue;
       var stress = getStress(side);
-      result = Math.min(result, stress + getStressWeight(side.getType()));
-      if (stress == 0f) {
+      result = (byte) Math.min(result, stress + getStressWeight(side.getType()));
+      if (stress == 0) {
         break;
       }
     }
     return result;
   }
 
-  private void setStress(Block block, float value) {
-    if (!isStressAware(block)) return;
-    float[] stresses = getStressData(block);
+  private void setStress(Block block, byte value) {
+    byte[] stresses = getStressData(block);
     stresses[getOrdinalIndex(block)] = value;
   }
 
-  private final Map<Material, Float> weightMemo = new HashMap<>();
+  private final Map<Material, Byte> weightMemo = new HashMap<>();
 
-  private float getStressWeight(Material mat) {
+  private byte getStressWeight(Material mat) {
     return weightMemo.computeIfAbsent(
         mat,
         m -> {
           float weight = 1.0f / (mat.getHardness() + mat.getBlastResistance());
           weight = clamp(weight, 1 / 12f, 1f);
-          return weight;
+          return (byte) (weight * 64);
         });
   }
 

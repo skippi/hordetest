@@ -1,5 +1,6 @@
 package io.github.skippi.hordetest.gravity;
 
+import org.bukkit.Chunk;
 import org.bukkit.block.Block;
 
 public class ChunkPos {
@@ -9,6 +10,10 @@ public class ChunkPos {
   public ChunkPos(int x, int z) {
     this.x = x;
     this.z = z;
+  }
+
+  public static ChunkPos from(Chunk chunk) {
+    return new ChunkPos(chunk.getX(), chunk.getZ());
   }
 
   public static ChunkPos from(Block block) {

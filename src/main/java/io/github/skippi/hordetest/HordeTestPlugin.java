@@ -32,6 +32,8 @@ import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.generator.BlockPopulator;
 import org.bukkit.inventory.*;
@@ -54,6 +56,7 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
   public static Set<Block> torches = new HashSet<>();
   private static int BORDER_SIZE = 400;
   private static Map<Player, Location> PLAYER_DEATH_LOCATIONS = new HashMap<>();
+  public static NamespacedKey stressKey;
 
   public static ProtocolManager getProtocolManager() {
     return PM;
@@ -241,7 +244,15 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
   }
 
   @Override
+  public void onDisable() {
+    for (var chunk : Bukkit.getWorld("world").getLoadedChunks()) {
+      SS.unloadChunk(chunk);
+    }
+  }
+
+  @Override
   public void onEnable() {
+    stressKey = new NamespacedKey(this, "ht.stress");
     Bukkit.getPluginManager().registerEvents(this, this);
     Bukkit.getScheduler()
         .scheduleSyncRepeatingTask(
@@ -962,6 +973,16 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     Block block = event.getBlock();
     PHYSICS_SCHEDULER.schedule(new UpdateNeighborStressAction(block));
     PHYSICS_SCHEDULER.schedule(new UpdateStressAction(block));
+  }
+
+  @EventHandler
+  private void loadChunk(ChunkLoadEvent e) {
+    SS.loadChunk(e.getChunk());
+  }
+
+  @EventHandler
+  private void unloadChunk(ChunkUnloadEvent e) {
+    SS.unloadChunk(e.getChunk());
   }
 
   @EventHandler
