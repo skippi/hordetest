@@ -27,7 +27,7 @@ public class StressSystem {
     }
     byte newStress = computeNewStress(block);
     if (newStress >= 64) {
-      physicsScheduler.schedule(new FallAction(block));
+      physicsScheduler.schedule((s) -> Action.drop(block, physicsScheduler.size() > 1024));
     }
     if (getStress(block) != newStress) {
       setStress(block, newStress);
@@ -49,10 +49,7 @@ public class StressSystem {
     if (data == null) return;
     chunk
         .getPersistentDataContainer()
-        .set(
-            HordeTestPlugin.stressKey,
-            PersistentDataType.BYTE_ARRAY,
-            data);
+        .set(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY, data);
   }
 
   public void resetHistory() {
