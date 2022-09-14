@@ -149,8 +149,7 @@ public class StressSystem {
   }
 
   public boolean isBaseable(Block block) {
-    return chunkStressDatas.containsKey(ChunkPos.from(block))
-        && !block.isEmpty()
+    return !block.isEmpty()
         && !block.isLiquid()
         && block.getType() != Material.GRASS
         && block.getType() != Material.FIRE;
