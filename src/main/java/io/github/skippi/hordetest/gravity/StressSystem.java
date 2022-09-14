@@ -144,6 +144,8 @@ public class StressSystem {
         || type == Material.DARK_OAK_LEAVES
         || type == Material.MANGROVE_LEAVES
         || type == Material.AZALEA_LEAVES
+        || type == Material.VINE
+        || type == Material.COCOA
         || type == Material.BEDROCK
         || type == Material.FIRE
         || type == Material.WALL_TORCH
