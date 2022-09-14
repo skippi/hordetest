@@ -8,7 +8,6 @@ import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import io.github.skippi.hordetest.gravity.PhysicsScheduler;
 import io.github.skippi.hordetest.gravity.StressSystem;
-import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -670,7 +669,10 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
   @EventHandler
   private void gravityPhysics(BlockPhysicsEvent event) {
     if (event.getBlock().getWorld().getEnvironment() != Environment.NORMAL) return;
-    PHYSICS_SCHEDULER.schedule(new UpdateStressAction(event.getBlock()));
+    PHYSICS_SCHEDULER.schedule((s) -> {
+      SS.update(event.getBlock(), s, true);
+      return 0;
+    });
   }
 
   @EventHandler

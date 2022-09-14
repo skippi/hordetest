@@ -13,11 +13,18 @@ import org.bukkit.persistence.PersistentDataType;
 public class StressSystem {
   private final Map<ChunkId, byte[]> chunkStressDatas = new HashMap<>();
 
-  public void update(Block block, PhysicsScheduler physicsScheduler) {
+  private static BlockFace[] FACES_TO_CHECK = {
+    BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.UP
+  };
+
+  public void update(Block block, PhysicsScheduler physicsScheduler, boolean typeCheck) {
     if (!chunkStressDatas.containsKey(ChunkId.from(block))) return;
-    var data = StressData.DEFAULT_VALUE;
-    data = StressData.type(data, StressType.from(block));
-    data = StressData.baseable(data, isBaseable(block));
+    final var src = getStressData(block);
+    var data = src;
+    if (typeCheck) {
+      data = StressData.type(data, StressType.from(block));
+      data = StressData.baseable(data, isBaseable(block));
+    }
     if (StressData.type(data) == StressType.Permanent) {
       data = StressData.stress(data, 0f);
     } else if (StressData.type(data) == StressType.Aware) {
@@ -26,9 +33,14 @@ public class StressSystem {
     if (StressData.type(data) == StressType.Aware && StressData.stress(data) >= 1f) {
       physicsScheduler.schedule(s -> Action.drop(block, s.size() > 512));
     }
-    if (data == getStressData(block)) return;
+    if (data == src) return;
     setStressData(block, data);
-    physicsScheduler.schedule(new UpdateNeighborStressAction(block));
+    for (var face : FACES_TO_CHECK) {
+      physicsScheduler.schedule((s) -> {
+        HordeTestPlugin.SS.update(block.getRelative(face), physicsScheduler, false);
+        return 0;
+      });
+    }
   }
 
   private static final int MIN_HEIGHT = -64;
