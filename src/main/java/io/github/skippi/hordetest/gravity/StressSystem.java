@@ -11,10 +11,10 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.persistence.PersistentDataType;
 
 public class StressSystem {
-  private final Map<ChunkPos, byte[]> chunkStressDatas = new HashMap<>();
+  private final Map<ChunkId, byte[]> chunkStressDatas = new HashMap<>();
 
   public void update(Block block, PhysicsScheduler physicsScheduler) {
-    if (!chunkStressDatas.containsKey(ChunkPos.from(block))) return;
+    if (!chunkStressDatas.containsKey(ChunkId.from(block))) return;
     var data = StressData.DEFAULT_VALUE;
     data = StressData.type(data, StressType.from(block));
     data = StressData.baseable(data, isBaseable(block));
@@ -32,18 +32,18 @@ public class StressSystem {
   }
 
   public void loadChunk(Chunk chunk) {
-    if (chunkStressDatas.containsKey(ChunkPos.from(chunk))) return;
+    if (chunkStressDatas.containsKey(ChunkId.from(chunk))) return;
     var data =
         chunk
             .getPersistentDataContainer()
             .get(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY);
     if (data != null) {
-      chunkStressDatas.put(ChunkPos.from(chunk), data);
+      chunkStressDatas.put(ChunkId.from(chunk), data);
     }
     final var height = chunk.getWorld().getMaxHeight() - chunk.getWorld().getMinHeight() + 1;
     data = new byte[16 * 16 * height];
     Arrays.fill(data, StressData.DEFAULT_VALUE);
-    chunkStressDatas.put(ChunkPos.from(chunk), data);
+    chunkStressDatas.put(ChunkId.from(chunk), data);
     for (int j = chunk.getWorld().getMinHeight(); j < chunk.getWorld().getMaxHeight(); ++j) {
       for (int i = 0; i < 16; ++i) {
         for (int k = 0; k < 16; ++k) {
@@ -63,7 +63,7 @@ public class StressSystem {
   }
 
   public void unloadChunk(Chunk chunk) {
-    final var data = chunkStressDatas.remove(ChunkPos.from(chunk));
+    final var data = chunkStressDatas.remove(ChunkId.from(chunk));
     if (data == null) return;
     chunk
         .getPersistentDataContainer()
@@ -85,7 +85,7 @@ public class StressSystem {
     if (block.getY() < block.getWorld().getMinHeight()) {
       return StressData.stress(StressData.DEFAULT_VALUE, 0f);
     }
-    final var chunkData = chunkStressDatas.get(ChunkPos.from(block));
+    final var chunkData = chunkStressDatas.get(ChunkId.from(block));
     if (chunkData == null) {
       return StressData.DEFAULT_VALUE;
     }
@@ -93,7 +93,7 @@ public class StressSystem {
   }
 
   public void setStressData(Block block, byte data) {
-    final var chunkData = chunkStressDatas.get(ChunkPos.from(block));
+    final var chunkData = chunkStressDatas.get(ChunkId.from(block));
     if (chunkData == null) return;
     chunkData[getOrdinalIndex(block)] = data;
   }
