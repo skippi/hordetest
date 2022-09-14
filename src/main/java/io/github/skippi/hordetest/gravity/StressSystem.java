@@ -150,10 +150,7 @@ public class StressSystem {
   }
 
   public boolean isBaseable(Block block) {
-    return !block.isEmpty()
-        && !block.isLiquid()
-        && block.getType() != Material.GRASS
-        && block.getType() != Material.FIRE;
+    return block.isSolid();
   }
 
   public static float clamp(float value, float min, float max) {
