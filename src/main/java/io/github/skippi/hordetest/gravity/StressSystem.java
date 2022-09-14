@@ -31,6 +31,9 @@ public class StressSystem {
     physicsScheduler.schedule(new UpdateNeighborStressAction(block));
   }
 
+  private static final int MIN_HEIGHT = -64;
+  private static final int MAX_HEIGHT = 320; // exclusive
+
   public void loadChunk(Chunk chunk) {
     if (chunkStressDatas.containsKey(ChunkId.from(chunk))) return;
     var data =
@@ -40,11 +43,10 @@ public class StressSystem {
     if (data != null) {
       chunkStressDatas.put(ChunkId.from(chunk), data);
     }
-    final var height = chunk.getWorld().getMaxHeight() - chunk.getWorld().getMinHeight() + 1;
-    data = new byte[16 * 16 * height];
+    data = new byte[16 * 16 * (MAX_HEIGHT - MIN_HEIGHT)];
     Arrays.fill(data, StressData.DEFAULT_VALUE);
     chunkStressDatas.put(ChunkId.from(chunk), data);
-    for (int j = chunk.getWorld().getMinHeight(); j < chunk.getWorld().getMaxHeight(); ++j) {
+    for (int j = MIN_HEIGHT; j < MAX_HEIGHT; ++j) {
       for (int i = 0; i < 16; ++i) {
         for (int k = 0; k < 16; ++k) {
           final var block = chunk.getBlock(i, j, k);
@@ -72,7 +74,7 @@ public class StressSystem {
 
   private int getOrdinalIndex(Block block) {
     final int relX = block.getX() & 0xF;
-    final int relY = block.getY() - block.getWorld().getMinHeight();
+    final int relY = block.getY() - MIN_HEIGHT;
     final int relZ = block.getZ() & 0xF;
     return getOrdinalIndex(relX, relY, relZ);
   }
@@ -82,7 +84,7 @@ public class StressSystem {
   }
 
   public byte getStressData(Block block) {
-    if (block.getY() < block.getWorld().getMinHeight()) {
+    if (block.getY() < MIN_HEIGHT) {
       return StressData.stress(StressData.DEFAULT_VALUE, 0f);
     }
     final var chunkData = chunkStressDatas.get(ChunkId.from(block));
