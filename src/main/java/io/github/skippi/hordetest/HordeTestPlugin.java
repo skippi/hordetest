@@ -31,13 +31,11 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.generator.BlockPopulator;
 import org.bukkit.inventory.*;
-import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.BlockIterator;
@@ -54,7 +52,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
   public static StressSystem SS = new StressSystem();
   public static Set<LivingEntity> turrets = new HashSet<>();
   public static Set<Block> torches = new HashSet<>();
-  private static int BORDER_SIZE = 400;
   private static Map<Player, Location> PLAYER_DEATH_LOCATIONS = new HashMap<>();
   public static NamespacedKey stressKey;
 
@@ -319,7 +316,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
             1);
     Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeArrowTurret()));
     Bukkit.getOnlinePlayers().forEach(p -> p.getInventory().addItem(makeRepairTurret()));
-    Bukkit.getOnlinePlayers().forEach(HordeTestPlugin::addNoCooldownAttacks);
     getCommand("stage").setExecutor(new StageCommand());
     INSTANCE = this;
     PM = ProtocolLibrary.getProtocolManager();
@@ -605,10 +601,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     }
   }
 
-  private static void addNoCooldownAttacks(Player player) {
-    player.getAttribute(Attribute.GENERIC_ATTACK_SPEED).setBaseValue(16);
-  }
-
   @EventHandler
   private void noSleep(PlayerBedEnterEvent event) {
     event.setUseBed(Event.Result.DENY);
@@ -635,11 +627,6 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
       }
     }
     return Optional.empty();
-  }
-
-  @EventHandler
-  private void playerNoCooldownAttacks(PlayerJoinEvent event) {
-    addNoCooldownAttacks(event.getPlayer());
   }
 
   @EventHandler
