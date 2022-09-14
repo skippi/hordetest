@@ -13,8 +13,4 @@ public class Blocks {
   public static boolean isLog(Block block) {
     return block.getType().toString().contains("_LOG");
   }
-
-  public static boolean isLeaves(Block block) {
-    return block.getType().toString().contains("_LEAVES");
-  }
 }

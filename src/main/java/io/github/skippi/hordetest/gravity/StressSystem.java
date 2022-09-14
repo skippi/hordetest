@@ -1,6 +1,5 @@
 package io.github.skippi.hordetest.gravity;
 
-import io.github.skippi.hordetest.Blocks;
 import io.github.skippi.hordetest.HordeTestPlugin;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -134,7 +133,14 @@ public class StressSystem {
 
   public static boolean isPermanentlyStable(Block block) {
     return block.isLiquid()
-        || Blocks.isLeaves(block)
+        || block.getType() == Material.OAK_LEAVES
+        || block.getType() == Material.SPRUCE_LEAVES
+        || block.getType() == Material.BIRCH_LEAVES
+        || block.getType() == Material.JUNGLE_LEAVES
+        || block.getType() == Material.ACACIA_LEAVES
+        || block.getType() == Material.DARK_OAK_LEAVES
+        || block.getType() == Material.MANGROVE_LEAVES
+        || block.getType() == Material.AZALEA_LEAVES
         || block.getType() == Material.BEDROCK
         || block.getType() == Material.FIRE
         || block.getType() == Material.WALL_TORCH
