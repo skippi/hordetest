@@ -17,13 +17,13 @@ public interface Action {
       }
       curr.getRelative(BlockFace.UP).setBlockData(block.getBlockData(), true);
       block.setType(Material.AIR);
-      return 0;
+      return 1 / 256;
     }
     block
         .getWorld()
         .spawnFallingBlock(block.getLocation().clone().add(0.5, 0, 0.5), block.getBlockData());
     block.setType(Material.AIR);
-    return 1 / 256;
+    return 1 / 64;
   }
 
   private static boolean canFallThrough(Block block) {

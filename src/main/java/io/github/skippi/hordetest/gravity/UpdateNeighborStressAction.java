@@ -1,7 +1,5 @@
 package io.github.skippi.hordetest.gravity;
 
-import io.github.skippi.hordetest.Blocks;
-import java.util.Arrays;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 
@@ -12,14 +10,14 @@ public class UpdateNeighborStressAction implements Action {
     this.block = block;
   }
 
+  private static BlockFace[] FACES_TO_CHECK = {
+    BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.UP
+  };
+
   @Override
   public double call(PhysicsScheduler physicsScheduler) {
-    BlockFace[] facesToCheck = {
-      BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.UP
-    };
-    for (Block neighbor : Blocks.getRelativeBlocks(block, Arrays.asList(facesToCheck))) {
-      if (!neighbor.getWorld().getWorldBorder().isInside(neighbor.getLocation())) continue;
-      physicsScheduler.schedule(new UpdateStressAction(neighbor));
+    for (var face : FACES_TO_CHECK) {
+      physicsScheduler.schedule(new UpdateStressAction(block.getRelative(face)));
     }
     return 0;
   }

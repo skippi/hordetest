@@ -21,9 +21,16 @@ public class ChunkPos {
   }
 
   @Override
+  public String toString() {
+    return "ChunkPos{x=" + x + ", z=" + z + "}";
+  }
+
+  @Override
   public int hashCode() {
-    int result = x;
-    result = 31 * result + z;
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + x;
+    result = prime * result + z;
     return result;
   }
 
@@ -33,6 +40,8 @@ public class ChunkPos {
     if (obj == null) return false;
     if (getClass() != obj.getClass()) return false;
     ChunkPos other = (ChunkPos) obj;
-    return x == other.x && z == other.z;
+    if (x != other.x) return false;
+    if (z != other.z) return false;
+    return true;
   }
 }

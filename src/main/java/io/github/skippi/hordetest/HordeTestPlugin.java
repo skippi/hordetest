@@ -8,7 +8,6 @@ import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import com.destroystokyo.paper.event.entity.ProjectileCollideEvent;
 import io.github.skippi.hordetest.gravity.PhysicsScheduler;
 import io.github.skippi.hordetest.gravity.StressSystem;
-import io.github.skippi.hordetest.gravity.UpdateNeighborStressAction;
 import io.github.skippi.hordetest.gravity.UpdateStressAction;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -17,6 +16,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
+import org.bukkit.World.Environment;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -255,6 +255,14 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
     stressKey = new NamespacedKey(this, "ht.stress");
     Bukkit.getPluginManager().registerEvents(this, this);
     Bukkit.getScheduler()
+        .scheduleSyncDelayedTask(
+            this,
+            () -> {
+              Bukkit.getServer()
+                  .dispatchCommand(Bukkit.getConsoleSender(), "spark profiler --timeout 60");
+            },
+            1);
+    Bukkit.getScheduler()
         .scheduleSyncRepeatingTask(
             this,
             () -> {
@@ -329,31 +337,32 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
         }
       }
     }
-    for (World world : Bukkit.getWorlds()) {
-      world.setGameRule(GameRule.RANDOM_TICK_SPEED, 24);
-      world
-          .getWorldBorder()
-          .setCenter(world.getSpawnLocation().getX(), world.getSpawnLocation().getZ());
-      world.getWorldBorder().setSize(BORDER_SIZE, 0);
-      for (int x = -getChunkRadius(world); x <= getChunkRadius(world); ++x) {
-        for (int z = -getChunkRadius(world); z <= getChunkRadius(world); ++z) {
-          @NotNull Chunk chunk = world.getChunkAt(x, z);
-          chunk.setForceLoaded(true);
-          for (int i = 0; i < 16; ++i) {
-            for (int j = 0; j < 16; ++j) {
-              double newAvg = WORLD_HEIGHT_AVERAGES.getOrDefault(world, 0.0);
-              newAvg +=
-                  world.getHighestBlockYAt(
-                          chunk.getBlock(i, 255, j).getLocation(),
-                          HeightMap.MOTION_BLOCKING_NO_LEAVES)
-                      / (256.0 * (Math.pow(getChunkRadius(world) * 2 + 1, 2)));
-              WORLD_HEIGHT_AVERAGES.put(world, newAvg);
-            }
-          }
-        }
-      }
-      spawnMorningHerds(world);
-    }
+    // for (World world : Bukkit.getWorlds()) {
+    //   world.setGameRule(GameRule.RANDOM_TICK_SPEED, 24);
+    //   world
+    //       .getWorldBorder()
+    //       .setCenter(world.getSpawnLocation().getX(), world.getSpawnLocation().getZ());
+    //   world.getWorldBorder().setSize(BORDER_SIZE, 0);
+    //   for (int x = -getChunkRadius(world); x <= getChunkRadius(world); ++x) {
+    //     for (int z = -getChunkRadius(world); z <= getChunkRadius(world); ++z) {
+    //       @NotNull Chunk chunk = world.getChunkAt(x, z);
+    //       chunk.setForceLoaded(true);
+    //       for (int i = 0; i < 16; ++i) {
+    //         for (int j = 0; j < 16; ++j) {
+    //           double newAvg = WORLD_HEIGHT_AVERAGES.getOrDefault(world, 0.0);
+    //           newAvg +=
+    //               world.getHighestBlockYAt(
+    //                       chunk.getBlock(i, 255, j).getLocation(),
+    //                       HeightMap.MOTION_BLOCKING_NO_LEAVES)
+    //                   / (256.0 * (Math.pow(getChunkRadius(world) * 2 + 1, 2)));
+    //           WORLD_HEIGHT_AVERAGES.put(world, newAvg);
+    //         }
+    //       }
+    //     }
+    //   }
+    //   spawnMorningHerds(world);
+    // }
+
     makeFlaxRecipes().forEach(getServer()::addRecipe);
     getServer()
         .addRecipe(
@@ -969,18 +978,19 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
 
   @EventHandler
   private void gravityPhysics(BlockPhysicsEvent event) {
-    Block block = event.getBlock();
-    PHYSICS_SCHEDULER.schedule(new UpdateNeighborStressAction(block));
-    PHYSICS_SCHEDULER.schedule(new UpdateStressAction(block));
+    if (event.getBlock().getWorld().getEnvironment() != Environment.NORMAL) return;
+    PHYSICS_SCHEDULER.schedule(new UpdateStressAction(event.getBlock()));
   }
 
   @EventHandler
   private void loadChunk(ChunkLoadEvent e) {
+    if (e.getWorld().getEnvironment() != Environment.NORMAL) return;
     SS.loadChunk(e.getChunk());
   }
 
   @EventHandler
   private void unloadChunk(ChunkUnloadEvent e) {
+    if (e.getWorld().getEnvironment() != Environment.NORMAL) return;
     SS.unloadChunk(e.getChunk());
   }
 
