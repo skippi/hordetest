@@ -136,7 +136,10 @@ public class StressSystem {
     return block.isLiquid()
         || Blocks.isLeaves(block)
         || block.getType() == Material.BEDROCK
-        || block.getType() == Material.FIRE;
+        || block.getType() == Material.FIRE
+        || block.getType() == Material.WALL_TORCH
+        || block.getType() == Material.REDSTONE_WALL_TORCH
+        || block.getType() == Material.SOUL_WALL_TORCH;
   }
 
   public boolean isBaseable(Block block) {
