@@ -55,6 +55,7 @@ public class StressSystem {
             .get(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY);
     if (data != null) {
       chunkStressDatas.put(ChunkId.from(chunk), data);
+      return;
     }
     data = new byte[16 * 16 * (MAX_HEIGHT - MIN_HEIGHT)];
     Arrays.fill(data, StressData.DEFAULT_VALUE);
