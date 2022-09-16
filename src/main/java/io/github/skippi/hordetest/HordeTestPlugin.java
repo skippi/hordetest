@@ -669,10 +669,11 @@ public class HordeTestPlugin extends JavaPlugin implements Listener {
   @EventHandler
   private void gravityPhysics(BlockPhysicsEvent event) {
     if (event.getBlock().getWorld().getEnvironment() != Environment.NORMAL) return;
-    PHYSICS_SCHEDULER.schedule((s) -> {
-      SS.update(event.getBlock(), s, true);
-      return 0;
-    });
+    PHYSICS_SCHEDULER.schedule(
+        (s) -> {
+          SS.update(event.getBlock(), s, true);
+          return 0;
+        });
   }
 
   @EventHandler

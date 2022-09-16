@@ -36,10 +36,11 @@ public class StressSystem {
     if (data == src) return;
     setStressData(block, data);
     for (var face : FACES_TO_CHECK) {
-      physicsScheduler.schedule((s) -> {
-        HordeTestPlugin.SS.update(block.getRelative(face), physicsScheduler, false);
-        return 0;
-      });
+      physicsScheduler.schedule(
+          (s) -> {
+            HordeTestPlugin.SS.update(block.getRelative(face), physicsScheduler, false);
+            return 0;
+          });
     }
   }
 
@@ -145,31 +146,11 @@ public class StressSystem {
         });
   }
 
-  public static boolean isPermanentlyStable(Block block) {
-    if (block.isLiquid()) return true;
-    final var type = block.getType();
-    return type == Material.OAK_LEAVES
-        || type == Material.SPRUCE_LEAVES
-        || type == Material.BIRCH_LEAVES
-        || type == Material.JUNGLE_LEAVES
-        || type == Material.ACACIA_LEAVES
-        || type == Material.DARK_OAK_LEAVES
-        || type == Material.MANGROVE_LEAVES
-        || type == Material.AZALEA_LEAVES
-        || type == Material.VINE
-        || type == Material.COCOA
-        || type == Material.BEDROCK
-        || type == Material.FIRE
-        || type == Material.WALL_TORCH
-        || type == Material.REDSTONE_WALL_TORCH
-        || type == Material.SOUL_WALL_TORCH;
-  }
-
-  public boolean isBaseable(Block block) {
+  private static boolean isBaseable(Block block) {
     return block.isSolid();
   }
 
-  public static float clamp(float value, float min, float max) {
+  private static float clamp(float value, float min, float max) {
     return Math.max(Math.min(value, max), min);
   }
 }
