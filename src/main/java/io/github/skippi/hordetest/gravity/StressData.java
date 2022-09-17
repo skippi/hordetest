@@ -1,9 +1,7 @@
 package io.github.skippi.hordetest.gravity;
 
-import java.io.Serializable;
-
-class StressData implements Serializable {
-  public static byte DEFAULT_VALUE = (byte) 0b11110000; // 1.0f stress, None, base=false
+public final class StressData {
+  public static final byte DEFAULT_VALUE = (byte) 0b11110000; // 1.0f stress, None, base=false
 
   public static float stress(byte data) {
     final var mask = 0b11111 << 3;
