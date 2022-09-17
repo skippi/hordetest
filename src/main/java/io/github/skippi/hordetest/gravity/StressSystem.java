@@ -86,26 +86,37 @@ public class StressSystem {
         .set(HordeTestPlugin.stressKey, PersistentDataType.BYTE_ARRAY, data);
   }
 
-  private int getOrdinalIndex(Block block) {
-    final int relX = block.getX() & 0xF;
-    final int relY = block.getY() - MIN_HEIGHT;
-    final int relZ = block.getZ() & 0xF;
-    return getOrdinalIndex(relX, relY, relZ);
-  }
-
-  private int getOrdinalIndex(int chunkX, int chunkY, int chunkZ) {
+  private static int getOrdinalIndex(int blockX, int blockY, int blockZ) {
+    final int chunkX = blockX & 0xF;
+    final int chunkY = blockY - MIN_HEIGHT;
+    final int chunkZ = blockZ & 0xF;
     return chunkX + 16 * chunkZ + 16 * 16 * chunkY;
   }
 
+  private static int getOrdinalIndex(Block block) {
+    return getOrdinalIndex(block.getX(), block.getY(), block.getZ());
+  }
+
   public byte getStressData(Block block) {
-    if (block.getY() < MIN_HEIGHT) {
+    return getStressData(block.getX(), block.getY(), block.getZ());
+  }
+
+  private ChunkId id1 = null; 
+  private byte[] cache1 = null; 
+
+  public byte getStressData(int blockX, int blockY, int blockZ) {
+    if (blockY < MIN_HEIGHT) {
       return StressData.stress(StressData.DEFAULT_VALUE, 0f);
     }
-    final var chunkData = chunkStressDatas.get(ChunkId.from(block));
-    if (chunkData == null) {
+    final var id = ChunkId.fromChunkPos(blockX >> 4, blockZ >> 4);
+    if (!id.equals(id1)) {
+      id1 = id;
+      cache1 = chunkStressDatas.get(id);
+    }
+    if (cache1 == null) {
       return StressData.DEFAULT_VALUE;
     }
-    return chunkData[getOrdinalIndex(block)];
+    return cache1[getOrdinalIndex(blockX, blockY, blockZ)];
   }
 
   public void setStressData(Block block, byte data) {
@@ -119,16 +130,21 @@ public class StressSystem {
   };
 
   private float computeNewStress(Block block) {
-    final var below = getStressData(block.getRelative(BlockFace.DOWN));
+    final var below = getStressData(block.getX(), block.getY() - 1, block.getZ());
     var result = StressData.baseable(below) ? StressData.stress(below) : 1f;
     if (result == 0) {
       return result;
     }
     for (var face : HORIZONTAL_FACES) {
-      final var side = block.getRelative(face);
-      final var data = getStressData(side);
+      final var data =
+          getStressData(
+              block.getX() + face.getModX(),
+              block.getY() + face.getModY(),
+              block.getZ() + face.getModZ());
       if (!StressData.baseable(data)) continue;
-      result = Math.min(result, StressData.stress(data) + getStressWeight(side.getType()));
+      result =
+          Math.min(
+              result, StressData.stress(data) + getStressWeight(block.getRelative(face).getType()));
       if (StressData.stress(data) == 0) {
         break;
       }
@@ -137,14 +153,20 @@ public class StressSystem {
   }
 
   private final Map<Material, Float> weightMemo = new HashMap<>();
-
+  private Material id2;
+  private float cache2;
   private float getStressWeight(Material mat) {
-    return weightMemo.computeIfAbsent(
-        mat,
-        m -> {
-          float weight = 1.0f / (mat.getHardness() + mat.getBlastResistance());
-          return clamp(weight, 1 / 12f, 3 / 12f);
-        });
+    if (mat != id2) {
+      id2 = mat;
+      cache2 = weightMemo.computeIfAbsent(
+          mat,
+          m -> {
+            float weight = 1.0f / (mat.getHardness() + mat.getBlastResistance());
+            return clamp(weight, 1 / 12f, 3 / 12f);
+          });
+    }
+
+    return cache2;
   }
 
   private static boolean isBaseable(Block block) {
