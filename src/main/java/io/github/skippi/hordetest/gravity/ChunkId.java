@@ -4,15 +4,16 @@ import org.bukkit.Chunk;
 import org.bukkit.block.Block;
 
 public final class ChunkId {
-  private final int id;
+  private final int x;
+  private final int z;
 
-  public ChunkId(int id) {
-    this.id = id;
+  public ChunkId(int x, int z) {
+    this.x = x;
+    this.z = z;
   }
 
   public static ChunkId fromChunkPos(int x, int z) {
-    final int prime = 31;
-    return new ChunkId(prime * x + z);
+    return new ChunkId(x, z);
   }
 
   public static ChunkId from(Chunk chunk) {
@@ -25,7 +26,7 @@ public final class ChunkId {
 
   @Override
   public int hashCode() {
-    return id;
+    return 31 * x + z;
   }
 
   @Override
@@ -34,7 +35,8 @@ public final class ChunkId {
     if (obj == null) return false;
     if (getClass() != obj.getClass()) return false;
     final ChunkId other = (ChunkId) obj;
-    if (id != other.id) return false;
+    if (x != other.x) return false;
+    if (z != other.z) return false;
     return true;
   }
 }
